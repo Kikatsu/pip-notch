@@ -1,7 +1,7 @@
 import SwiftUI
 
 enum CharacterStyle: String, CaseIterable, Identifiable {
-    case livingNotch, blob, pixel
+    case livingNotch, blob, pixel, minimal
 
     var id: String { rawValue }
 
@@ -10,6 +10,7 @@ enum CharacterStyle: String, CaseIterable, Identifiable {
         case .livingNotch: "Living notch"
         case .blob: "Burrow blob"
         case .pixel: "Pixel bit"
+        case .minimal: "Minimal"
         }
     }
 
@@ -18,6 +19,7 @@ enum CharacterStyle: String, CaseIterable, Identifiable {
         case .livingNotch: "The notch itself has eyes"
         case .blob: "A soft creature hanging from the notch"
         case .pixel: "An 8-bit sprite for terminal people"
+        case .minimal: "No character, just a status dot"
         }
     }
 }
@@ -35,7 +37,7 @@ struct CharacterView: View {
 
     var body: some View {
         let style = resolvedStyle
-        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: mood == .asleep && style == .livingNotch)) { context in
+        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: mood == .asleep && (style == .livingNotch || style == .minimal))) { context in
             Canvas { gc, size in
                 let t = context.date.timeIntervalSinceReferenceDate
                 switch style {
@@ -45,6 +47,8 @@ struct CharacterView: View {
                     BlobRenderer.draw(mood, time: t, in: &gc, size: size, large: large)
                 case .pixel:
                     PixelRenderer.draw(mood, time: t, in: &gc, size: size, large: large)
+                case .minimal:
+                    MinimalRenderer.draw(mood, time: t, in: &gc, size: size, large: large)
                 }
             }
         }
@@ -54,7 +58,40 @@ struct CharacterView: View {
 
     /// Frame for the character in the expanded panel.
     static func largeSize(for style: CharacterStyle) -> CGSize {
-        style == .livingNotch ? CGSize(width: 96, height: 30) : CGSize(width: 96, height: 58)
+        switch style {
+        case .livingNotch, .minimal: CGSize(width: 96, height: 30)
+        case .blob, .pixel: CGSize(width: 96, height: 58)
+        }
+    }
+}
+
+/// Minimal: no character at all. One small dot whose colour and motion carry the mood.
+enum MinimalRenderer {
+    static func draw(_ mood: Mood, time t: Double, in gc: inout GraphicsContext, size: CGSize, large: Bool) {
+        let r: CGFloat = large ? 5 : 3.5
+        let center = CGPoint(x: size.width / 2, y: size.height / 2)
+        func dot(_ radius: CGFloat, _ color: Color) {
+            gc.fill(Path(ellipseIn: CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)), with: .color(color))
+        }
+
+        switch mood {
+        case .asleep:
+            break
+        case .idle:
+            dot(r, .white.opacity(0.35))
+        case .working:
+            dot(r, .white.opacity(0.45 + 0.55 * (sin(t * 3) + 1) / 2))
+        case .needsYou:
+            let p = CGFloat((t * 0.85).truncatingRemainder(dividingBy: 1))
+            dot(r * (1 + 1.6 * p), Palette.amber.opacity(Double(1 - p) * 0.8))
+            dot(r, Palette.amber)
+        case .error:
+            dot(r, Palette.red)
+        case .rateLimited:
+            dot(r, Palette.amber.opacity(0.6))
+        case .finished:
+            dot(r, Palette.green)
+        }
     }
 }
 

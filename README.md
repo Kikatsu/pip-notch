@@ -50,7 +50,7 @@ Only Claude Code's and Codex's `PermissionRequest` hooks wait for you, because o
 
 ## Characters and sounds
 
-Settings has three characters: **Living notch** (the notch has eyes), **Burrow blob** and **Pixel bit**. All three react to the same moods.
+Settings has three characters, **Living notch** (the notch has eyes), **Burrow blob** and **Pixel bit**, plus **Minimal**: no character, just a small status dot (white while working, pulsing amber when an agent needs you, red on errors, green when done) and a face-free panel.
 
 Sounds are synthesized by Pip itself (`SoundPlayer.swift`), so there are no audio files or licences. Each cue (needs you, finished, error, rate limit) can be turned off separately, and there's a master switch and a volume slider.
 

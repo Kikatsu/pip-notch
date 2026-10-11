@@ -83,9 +83,13 @@ struct NotchRootView: View {
             }
             .frame(height: viewModel.notchSize.height)
 
-            let face = CharacterView.largeSize(for: CharacterStyle(rawValue: character) ?? .livingNotch)
-            CharacterView(mood: mood, large: true)
-                .frame(width: face.width, height: face.height)
+            let style = CharacterStyle(rawValue: character) ?? .livingNotch
+            // Minimal keeps the open panel purely informational: no face above the content.
+            if style != .minimal {
+                let face = CharacterView.largeSize(for: style)
+                CharacterView(mood: mood, large: true)
+                    .frame(width: face.width, height: face.height)
+            }
 
             if let approval = store.approvals.first {
                 ApprovalCard(approval: approval, position: 1, total: store.approvals.count, actions: actions)

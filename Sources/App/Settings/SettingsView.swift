@@ -61,7 +61,7 @@ struct SettingsView: View {
             }
 
             Section("Character") {
-                HStack(spacing: 12) {
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                     ForEach(CharacterStyle.allCases) { style in
                         CharacterCard(style: style, mood: previewMood, selected: style.rawValue == character) {
                             character = style.rawValue
@@ -172,7 +172,7 @@ private struct CharacterCard: View {
                     let size = CharacterView.largeSize(for: style)
                     CharacterView(mood: mood, large: true, style: style)
                         .frame(width: size.width, height: size.height)
-                        .padding(.top, style == .livingNotch ? 22 : 8)
+                        .padding(.top, style == .livingNotch || style == .minimal ? 22 : 8)
                 }
                 .frame(width: 132, height: 76)
                 Text(style.title).font(.callout.weight(.semibold))
