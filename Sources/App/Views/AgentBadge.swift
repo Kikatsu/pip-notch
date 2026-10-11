@@ -28,6 +28,10 @@ extension AgentKind {
         case .qoder: "QD"
         case .augment: "AU"
         case .goose: "GS"
+        case .grok: "GK"
+        case .kimi: "KM"
+        case .vibe: "MV"
+        case .qwen: "QW"
         case .cursor: "CU"
         case .windsurf: "WS"
         case .antigravity: "AG"
@@ -48,6 +52,10 @@ extension AgentKind {
         case .qoder: Color(red: 0.36, green: 0.82, blue: 0.55)
         case .augment: Color(red: 0.95, green: 0.95, blue: 0.95)
         case .goose: Color(red: 0.98, green: 0.80, blue: 0.40)
+        case .grok: Color(red: 0.88, green: 0.88, blue: 0.92)
+        case .kimi: Color(red: 0.45, green: 0.62, blue: 1.0)
+        case .vibe: Color(red: 1.0, green: 0.55, blue: 0.25)
+        case .qwen: Color(red: 0.55, green: 0.45, blue: 1.0)
         case .cursor: Color(red: 0.72, green: 0.85, blue: 1.0)
         case .windsurf: Color(red: 0.35, green: 0.85, blue: 0.75)
         case .antigravity: Color(red: 0.40, green: 0.78, blue: 1.0)

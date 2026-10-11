@@ -205,6 +205,9 @@ struct AgentIcon: View {
     private static let appPaths: [AgentKind: [String]] = [
         .claude: ["/Applications/Claude.app"],
         .codex: ["/Applications/Codex.app", "/Applications/ChatGPT.app"],
+        .grok: ["/Applications/Grok.app"],
+        .kimi: ["/Applications/Kimi.app"],
+        .qwen: ["/Applications/Qwen.app"],
         .cursor: ["/Applications/Cursor.app"],
         .windsurf: ["/Applications/Windsurf.app"],
         .antigravity: ["/Applications/Antigravity.app"],

@@ -126,6 +126,12 @@ enum HostApps {
         "com.trae.app": "Trae",
         "dev.kiro.desktop": "Kiro",
     ]
+    /// Desktop apps that run agents inside them (Claude Code in Claude, Codex in ChatGPT and Codex).
+    static let agentAppBundleIDs: [String: String] = [
+        "com.anthropic.claudefordesktop": "Claude",
+        "com.openai.chat": "ChatGPT",
+        "com.openai.codex": "Codex app",
+    ]
     static let editorNames: Set<String> = [
         "Code", "Visual Studio Code", "Cursor", "Windsurf", "VSCodium", "Zed", "Antigravity", "Trae", "Kiro",
     ]
@@ -154,9 +160,9 @@ enum HostApps {
 
     /// A short display name, e.g. "VS Code", "Ghostty".
     static func label(env: [String: String], pid: pid_t?) -> String? {
-        if let bundleID = env["__CFBundleIdentifier"], let name = editorBundleIDs[bundleID] { return name }
+        if let bundleID = env["__CFBundleIdentifier"], let name = editorBundleIDs[bundleID] ?? agentAppBundleIDs[bundleID] { return name }
         guard let app = app(env: env, pid: pid) else { return nil }
-        if let id = app.bundleIdentifier, let name = editorBundleIDs[id] { return name }
+        if let id = app.bundleIdentifier, let name = editorBundleIDs[id] ?? agentAppBundleIDs[id] { return name }
         return app.localizedName == "Code" ? "VS Code" : app.localizedName
     }
 }

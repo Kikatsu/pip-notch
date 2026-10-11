@@ -23,7 +23,7 @@ let eventName = payload?["hook_event_name"] as? String ?? (arguments.count > 1 ?
 let neutralOutput: String? = {
     switch agent {
     case "cursor": eventName == "beforeSubmitPrompt" ? #"{"continue":true}"# : "{}"
-    case "antigravity", "gemini": "{}"
+    case "antigravity", "gemini", "qwen": "{}"
     default: nil
     }
 }()
@@ -36,6 +36,11 @@ func finish(_ output: String? = nil) -> Never {
 }
 
 guard let payload else { finish() }
+
+let agentPID = ProcessTree.agentProcess(startingAt: getppid())
+// Grok Build also runs Claude Code's hook files. Its own Pip hook reports its sessions,
+// so a Claude hook fired by Grok stays quiet instead of showing Grok as Claude.
+if agent == "claude", ProcessTree.name(of: agentPID).lowercased().contains("grok") { finish() }
 let blocking = BridgeWire.blockingEvents.contains(eventName) && ["claude", "codex", "qoder"].contains(agent)
 
 let forwardedEnv = [
@@ -50,7 +55,7 @@ for key in forwardedEnv {
 let envelope: [String: Any] = [
     "v": BridgeWire.version,
     "agent": agent,
-    "pid": Int(ProcessTree.agentProcess(startingAt: getppid())),
+    "pid": Int(agentPID),
     "env": env,
     // The hook runs in the agent's working directory; used when the payload has no cwd.
     "cwd": FileManager.default.currentDirectoryPath,

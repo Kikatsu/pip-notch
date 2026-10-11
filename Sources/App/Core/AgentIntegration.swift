@@ -22,6 +22,9 @@ struct AgentIntegration: Identifiable {
         /// A whole file that belongs to Pip (a plugin, an extension, a hooks file of its own).
         /// Installing writes it; disconnecting deletes it. The closure gets the bridge path.
         case ownedFile((String) -> String)
+        /// A marked block Pip appends to a shared TOML file (Kimi Code, Mistral Vibe). Everything
+        /// outside the markers is the user's and never touched.
+        case tomlBlock((String) -> String)
     }
 
     let agent: AgentKind
@@ -41,6 +44,9 @@ struct AgentIntegration: Identifiable {
     }
 
     func isInstalled() -> Bool {
+        if case .tomlBlock = format {
+            return (try? String(contentsOf: configURL, encoding: .utf8)).map(TomlBlock.contains) ?? false
+        }
         if case .ownedFile = format {
             return (try? String(contentsOf: configURL, encoding: .utf8))?.contains(HookConfig.marker) ?? false
         }
@@ -52,6 +58,9 @@ struct AgentIntegration: Identifiable {
         guard let text = try? String(contentsOf: configURL, encoding: .utf8) else { return false }
         if case .ownedFile(let contents) = format {
             return text == contents(bridgePath)
+        }
+        if case .tomlBlock(let contents) = format {
+            return TomlBlock.extract(from: text) == TomlBlock.wrap(contents(bridgePath))
         }
         return isInstalled() && text.contains(bridgePath)
     }
@@ -66,11 +75,21 @@ struct AgentIntegration: Identifiable {
             try Data(contents(bridgePath).utf8).write(to: configURL, options: .atomic)
             return
         }
+        if case .tomlBlock(let contents) = format {
+            let text = (try? String(contentsOf: configURL, encoding: .utf8)) ?? ""
+            try TomlBlock.write(TomlBlock.installing(contents(bridgePath), into: text), to: configURL)
+            return
+        }
         let file = HookFile(url: configURL)
         try file.write(HookConfig.installing(format, agent: agent, bridgePath: bridgePath, into: try file.read()))
     }
 
     func uninstall() throws {
+        if case .tomlBlock = format {
+            guard let text = try? String(contentsOf: configURL, encoding: .utf8), TomlBlock.contains(text) else { return }
+            try TomlBlock.write(TomlBlock.removing(from: text), to: configURL)
+            return
+        }
         if case .ownedFile = format {
             guard isInstalled() else { return }
             try FileManager.default.removeItem(at: configURL)
@@ -96,8 +115,8 @@ struct AgentIntegration: Identifiable {
                     ("PermissionRequest", .blocking(timeout: 600)), ("Notification", .async),
                     ("Stop", .async), ("StopFailure", .async),
                 ]),
-                detectPaths: [at(".claude").path],
-                note: "Approvals in the notch. Applies to new sessions."
+                detectPaths: [at(".claude").path, "/Applications/Claude.app"],
+                note: "CLI, desktop app and editor extensions. Approvals in the notch."
             ),
             AgentIntegration(
                 agent: .codex,
@@ -107,8 +126,8 @@ struct AgentIntegration: Identifiable {
                     ("PreToolUse", .async), ("PostToolUse", .async),
                     ("PermissionRequest", .blocking(timeout: 600)), ("Stop", .async),
                 ]),
-                detectPaths: [at(".codex").path],
-                note: "Approvals in the notch. Run /hooks in Codex once to trust Pip."
+                detectPaths: [at(".codex").path, "/Applications/Codex.app", "/Applications/ChatGPT.app"],
+                note: "CLI, Codex and ChatGPT apps, editor extensions. Run /hooks once to trust Pip."
             ),
             AgentIntegration(
                 agent: .gemini,
@@ -196,6 +215,38 @@ struct AgentIntegration: Identifiable {
                 extraFiles: [(at(".agents/plugins/pip/plugin.json"), AgentPlugins.gooseManifest(bridgePath:))]
             ),
             AgentIntegration(
+                agent: .grok,
+                configURL: at(".grok/hooks/pip.json"),
+                format: .ownedFile(AgentPlugins.grok(bridgePath:)),
+                detectPaths: [at(".grok").path, "/opt/homebrew/bin/grok", at(".local/bin/grok").path],
+                note: "Status and replies for xAI's Grok Build."
+            ),
+            AgentIntegration(
+                agent: .kimi,
+                configURL: at(".kimi-code/config.toml"),
+                format: .tomlBlock(AgentPlugins.kimi(bridgePath:)),
+                detectPaths: [at(".kimi-code").path],
+                note: "Status and alerts. Pip adds a marked block to config.toml."
+            ),
+            AgentIntegration(
+                agent: .vibe,
+                configURL: at(".vibe/hooks.toml"),
+                format: .tomlBlock(AgentPlugins.vibe(bridgePath:)),
+                detectPaths: [at(".vibe").path],
+                note: "Status and replies. Pip adds a marked block to hooks.toml."
+            ),
+            AgentIntegration(
+                agent: .qwen,
+                configURL: at(".qwen/settings.json"),
+                format: .claudeStyle([
+                    ("SessionStart", .async), ("SessionEnd", .async), ("UserPromptSubmit", .async),
+                    ("PreToolUse", .async), ("PostToolUse", .async), ("PermissionRequest", .async),
+                    ("Notification", .async), ("Stop", .async), ("StopFailure", .async),
+                ]),
+                detectPaths: [at(".qwen").path],
+                note: "Status and alerts."
+            ),
+            AgentIntegration(
                 agent: .cursor,
                 configURL: at(".cursor/hooks.json"),
                 format: .flat(events: [
@@ -270,7 +321,7 @@ enum HookConfig {
             result["hooks"] = hooks
             if let version, result["version"] == nil { result["version"] = version }
 
-        case .ownedFile:
+        case .ownedFile, .tomlBlock:
             break
 
         case .antigravity:
@@ -321,7 +372,7 @@ enum HookConfig {
         case .antigravity:
             result[antigravityKey] = nil
 
-        case .ownedFile:
+        case .ownedFile, .tomlBlock:
             break
         }
         return result
@@ -395,5 +446,51 @@ enum BridgeInstaller {
             try fm.moveItem(at: staging, to: destination)
         }
         return destination.path
+    }
+}
+
+/// Pip's marked section inside a TOML file the user also edits.
+enum TomlBlock {
+    static let start = "# >>> Pip (managed by Pip; remove it in Pip Settings)"
+    static let end = "# <<< Pip"
+
+    static func wrap(_ body: String) -> String {
+        "\(start)\n\(body.trimmingCharacters(in: .newlines))\n\(end)"
+    }
+
+    static func contains(_ text: String) -> Bool { extract(from: text) != nil }
+
+    static func extract(from text: String) -> String? {
+        guard let a = text.range(of: start), let b = text.range(of: end, range: a.upperBound..<text.endIndex) else { return nil }
+        return String(text[a.lowerBound..<b.upperBound])
+    }
+
+    /// Replaces Pip's block, or appends it at the end, where `[[hooks]]` tables can't swallow the user's keys.
+    static func installing(_ body: String, into text: String) -> String {
+        var base = removing(from: text)
+        if !base.isEmpty, !base.hasSuffix("\n") { base += "\n" }
+        if !base.isEmpty { base += "\n" }
+        return base + wrap(body) + "\n"
+    }
+
+    static func removing(from text: String) -> String {
+        guard let block = extract(from: text), let range = text.range(of: block) else { return text }
+        var result = text
+        result.removeSubrange(range)
+        // Tidy the blank lines Pip added around its block.
+        while result.hasSuffix("\n\n") { result.removeLast() }
+        if result == "\n" { result = "" }
+        return result.replacingOccurrences(of: "\n\n\n", with: "\n\n")
+    }
+
+    static func write(_ text: String, to url: URL) throws {
+        let fm = FileManager.default
+        try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        if fm.fileExists(atPath: url.path) {
+            let backup = url.appendingPathExtension("pip-backup")
+            try? fm.removeItem(at: backup)
+            try fm.copyItem(at: url, to: backup)
+        }
+        try Data(text.utf8).write(to: url, options: .atomic)
     }
 }

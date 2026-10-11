@@ -187,4 +187,47 @@ enum AgentPlugins {
 
         """
     }
+
+    /// ~/.grok/hooks/pip.json for Grok Build.
+    static func grok(bridgePath: String) -> String {
+        var hooks: [String: Any] = [:]
+        for event in ["SessionStart", "SessionEnd", "UserPromptSubmit", "PreToolUse", "PostToolUse", "Stop", "StopFailure", "Notification"] {
+            hooks[event] = [["hooks": [["type": "command", "command": HookConfig.command(bridgePath: bridgePath, agent: .grok), "timeout": 5]]]]
+        }
+        let data = (try? JSONSerialization.data(withJSONObject: ["hooks": hooks], options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])) ?? Data()
+        return String(data: data, encoding: .utf8) ?? "{}"
+    }
+
+    /// A TOML literal string: single quotes, so the double quotes around the bridge path survive as-is.
+    static func tomlLiteral(_ text: String) -> String { "'\(text.replacingOccurrences(of: "'", with: ""))'" }
+
+    /// `[[hooks]]` entries for ~/.kimi-code/config.toml. Kimi accepts only event, matcher, command and timeout.
+    static func kimi(bridgePath: String) -> String {
+        ["SessionStart", "SessionEnd", "UserPromptSubmit", "PreToolUse", "PostToolUse", "PermissionRequest", "Notification", "Stop", "StopFailure"]
+            .map { event in
+                """
+                [[hooks]]
+                event = "\(event)"
+                command = \(tomlLiteral(HookConfig.command(bridgePath: bridgePath, agent: .kimi)))
+                timeout = 5
+                """
+            }
+            .joined(separator: "\n\n")
+    }
+
+    /// `[[hooks]]` entries for ~/.vibe/hooks.toml (Mistral Vibe).
+    static func vibe(bridgePath: String) -> String {
+        ["pre_tool", "post_tool", "post_agent"]
+            .map { type in
+                """
+                [[hooks]]
+                name = "pip-\(type.replacingOccurrences(of: "_", with: "-"))"
+                type = "\(type)"
+                command = \(tomlLiteral(HookConfig.command(bridgePath: bridgePath, agent: .vibe)))
+                timeout = 5.0
+                description = "Shows this session in the Pip notch."
+                """
+            }
+            .joined(separator: "\n\n")
+    }
 }

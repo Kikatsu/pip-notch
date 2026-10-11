@@ -12,6 +12,9 @@ enum AgentAdapter {
         case .qoder: canonicalizingTool(payload)
         case .unknown: generic(payload)
         case .augment: augment(payload)
+        case .grok: generic(payload)
+        case .kimi, .qwen: observingPermissions(payload)
+        case .vibe: vibe(payload)
         case .goose: goose(payload)
         case .cursor: cursor(payload)
         case .antigravity: antigravity(payload)
@@ -134,13 +137,38 @@ enum AgentAdapter {
         }
         alias("hook_event_name", ["hookEventName", "event", "eventName", "type"])
         alias("session_id", ["sessionId", "conversation_id", "conversationId", "thread_id", "threadId"])
-        alias("cwd", ["working_dir", "workingDir", "workspace", "project_dir"])
+        alias("cwd", ["working_dir", "workingDir", "workspaceRoot", "workspace", "project_dir"])
         alias("prompt", ["message", "user_prompt", "input"])
         alias("tool_name", ["toolName", "tool"])
         alias("tool_input", ["toolInput", "toolArgs", "arguments", "args"])
         alias("last_assistant_message", ["response", "assistant_response", "lastAssistantMessage"])
         if out["cwd"] == nil, let roots = (p["workspace_roots"] ?? p["workspaceRoots"]) as? [String], let first = roots.first {
             out["cwd"] = path(first)
+        }
+        return canonicalizingTool(out)
+    }
+
+    // MARK: Kimi Code and Qwen Code
+
+    /// Their PermissionRequest only observes the dialog, so it means "waiting for you", answered in the terminal.
+    static func observingPermissions(_ p: [String: Any]) -> [String: Any] {
+        var out = p
+        if p["hook_event_name"] as? String == "PermissionRequest" {
+            out["hook_event_name"] = "Notification"
+            out["notification_type"] = "agent_needs_input"
+        }
+        return canonicalizingTool(out)
+    }
+
+    // MARK: Mistral Vibe (~/.vibe/hooks.toml)
+
+    static func vibe(_ p: [String: Any]) -> [String: Any] {
+        var out = p
+        switch p["hook_event_name"] as? String ?? "" {
+        case "pre_tool": out["hook_event_name"] = "PreToolUse"
+        case "post_tool": out["hook_event_name"] = "PostToolUse"
+        case "post_agent": out["hook_event_name"] = "Stop"
+        default: break
         }
         return canonicalizingTool(out)
     }

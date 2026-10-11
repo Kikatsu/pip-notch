@@ -1,7 +1,8 @@
 import Foundation
 
 enum AgentKind: String, CaseIterable {
-    case claude, codex, gemini, copilot, droid, opencode, pi, kiro, qoder, augment, goose, cursor, windsurf, antigravity, unknown
+    case claude, codex, gemini, copilot, droid, opencode, pi, kiro, qoder, augment, goose, grok, kimi, vibe, qwen,
+         cursor, windsurf, antigravity, unknown
 
     init(raw: String) { self = AgentKind(rawValue: raw) ?? .unknown }
 
@@ -18,6 +19,10 @@ enum AgentKind: String, CaseIterable {
         case .qoder: "Qoder CLI"
         case .augment: "Augment"
         case .goose: "Goose"
+        case .grok: "Grok Build"
+        case .kimi: "Kimi Code"
+        case .vibe: "Mistral Vibe"
+        case .qwen: "Qwen Code"
         case .cursor: "Cursor"
         case .windsurf: "Windsurf"
         case .antigravity: "Antigravity"
