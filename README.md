@@ -54,6 +54,26 @@ Settings has three characters, **Living notch** (the notch has eyes), **Burrow b
 
 Sounds are synthesized by Pip itself (`SoundPlayer.swift`), so there are no audio files or licences. Each cue (needs you, finished, error, rate limit) can be turned off separately, and there's a master switch and a volume slider.
 
+## Reviewing plans and questions
+
+When Claude Code finishes planning, the plan appears in the notch. **Approve plan** lets it start; **Keep planning** sends it back, with your note if you typed one. When an agent asks you a question, the notch shows it with its options, and **Answer in terminal** takes you there.
+
+A finished turn stays quiet (no popup, no sound) if you're already looking at the app it runs in. Session rows show the git branch.
+
+## Keyboard shortcuts
+
+Work from any app (Settings → Shortcuts can turn them off):
+
+| Keys | Action |
+| --- | --- |
+| ⌃⌥Space | Open or close the notch |
+| ⌃⌥↩ | Allow the request, or approve the plan |
+| ⌃⌥⌫ | Deny the request, or keep planning |
+| ⌃⌥J | Go to the session that needs you most |
+| ⌃⌥M | Mute or unmute sounds |
+
+⌃⌥↩ and ⌃⌥⌫ are only claimed while a request is waiting.
+
 ## Jumping to a session
 
 Clicking a session focuses where it runs:

@@ -118,7 +118,10 @@ struct NotchRootView: View {
 
     /// A plain button, not a menu: menus popped from a non-activating panel close as soon as they open.
     private var settingsButton: some View {
-        SettingsGearButton(action: actions.openSettings)
+        HStack(spacing: 2) {
+            MuteButton(action: actions.toggleMute)
+            SettingsGearButton(action: actions.openSettings)
+        }
     }
 
     private var connectBanner: some View {
@@ -140,6 +143,27 @@ struct NotchRootView: View {
     }
 }
 
+
+private struct MuteButton: View {
+    let action: () -> Void
+    @AppStorage(PipDefaults.soundsEnabled) private var soundsEnabled = true
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: soundsEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
+                .font(.system(size: 11.5, weight: .semibold))
+                .foregroundStyle(hovering ? Color.white : Palette.quiet)
+                .frame(width: 30, height: 24)
+                .background(Circle().fill(hovering ? Palette.faint : .clear))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .help(soundsEnabled ? "Mute sounds (⌃⌥M)" : "Unmute sounds (⌃⌥M)")
+        .accessibilityLabel(soundsEnabled ? "Mute sounds" : "Unmute sounds")
+    }
+}
 
 private struct SettingsGearButton: View {
     let action: () -> Void

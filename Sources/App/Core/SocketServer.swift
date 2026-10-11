@@ -111,8 +111,13 @@ final class BridgeConnection {
     func finish(_ decision: ApprovalDecision?) {
         guard !finished else { return }
         finished = true
-        if let decision, decision != .passthrough,
-           var data = try? JSONSerialization.data(withJSONObject: ["decision": decision.rawValue]) {
+        var reply: [String: Any]?
+        switch decision {
+        case .allow: reply = ["decision": "allow"]
+        case .deny(let message): reply = ["decision": "deny", "message": message ?? "The user denied this from Pip."]
+        case .passthrough, nil: reply = nil
+        }
+        if let reply, var data = try? JSONSerialization.data(withJSONObject: reply) {
             data.append(0x0A)
             SocketIO.writeAll(fd, data)
         }

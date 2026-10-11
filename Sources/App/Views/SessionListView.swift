@@ -53,6 +53,15 @@ struct SessionRow: View {
                             .foregroundStyle(.white)
                             .lineLimit(1)
                         AgentBadge(agent: session.agent)
+                        if let branch = session.branch {
+                            Label(branch, systemImage: "arrow.triangle.branch")
+                                .font(.system(size: 10.5, design: .monospaced))
+                                .foregroundStyle(Palette.quiet)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                                .frame(maxWidth: 120, alignment: .leading)
+                                .fixedSize(horizontal: true, vertical: false)
+                        }
                         Text(subtitle)
                             .font(.system(size: 11))
                             .foregroundStyle(Palette.quiet)

@@ -15,6 +15,7 @@ enum DemoScript {
             (1.2, web, ["hook_event_name": "PreToolUse", "tool_name": "Edit", "tool_input": ["file_path": "/Users/demo/web-app/src/Theme.tsx"]]),
             (5.0, web, ["hook_event_name": "Stop", "last_assistant_message": "Added a dark mode toggle to the header and saved the choice."]),
             (10.0, api, ["hook_event_name": "PermissionRequest", "tool_name": "Bash", "tool_input": ["command": "rm -rf dist && npm run build"]]),
+            (16.0, web, ["hook_event_name": "PermissionRequest", "tool_name": "ExitPlanMode", "tool_input": ["plan": "## Dark mode docs\n1. Add a **Theming** page with screenshots\n2. Document the `prefers-color-scheme` fallback\n3. Link it from the README"]]),
             (22.0, api, ["hook_event_name": "StopFailure", "error": "server_error", "error_details": "API returned 500"]),
             (27.0, web, ["hook_event_name": "UserPromptSubmit", "prompt": "Now update the docs"]),
             (30.0, web, ["hook_event_name": "StopFailure", "error": "rate_limit", "error_details": "429 Too Many Requests"]),
@@ -30,12 +31,26 @@ enum DemoScript {
                 }
                 let event = HookEnvelope(agent: session == api ? .claude : .codex, pid: nil, payload: payload)
                 if event.isBlocking {
-                    store.handle(event) { decision in NSLog("Pip demo: approval answered \(decision.rawValue)") }
+                    store.handle(event) { decision in NSLog("Pip demo: approval answered \(decision.name)") }
                 } else {
                     store.handle(event)
                 }
             }
         }
+    }
+
+    /// Just a plan review and a question, for checking those cards.
+    static func runReview(on store: SessionStore) {
+        let plan = "## Dark mode docs\n1. Add a **Theming** page with screenshots\n2. Document the `prefers-color-scheme` fallback\n3. Link it from the README"
+        store.handle(HookEnvelope(agent: .claude, pid: nil, payload: [
+            "hook_event_name": "PermissionRequest", "session_id": "demo-plan", "cwd": "/Users/demo/web-app",
+            "tool_name": "ExitPlanMode", "tool_input": ["plan": plan],
+        ])) { NSLog("Pip demo: plan answered \($0.name)") }
+        store.handle(HookEnvelope(agent: .claude, pid: nil, payload: [
+            "hook_event_name": "PermissionRequest", "session_id": "demo-question", "cwd": "/Users/demo/api-server",
+            "tool_name": "AskUserQuestion",
+            "tool_input": ["questions": [["question": "Which database should the cache use?", "options": [["label": "Redis"], ["label": "SQLite"]]]]],
+        ])) { NSLog("Pip demo: question answered \($0.name)") }
     }
 
     /// A Cursor and an Antigravity session, sent in each editor's own payload format.

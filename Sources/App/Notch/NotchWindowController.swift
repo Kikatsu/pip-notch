@@ -103,6 +103,20 @@ final class NotchWindowController {
         viewModel.updateExpansion(store: store)
     }
 
+    /// Opens the panel from the keyboard (it stays a few seconds, longer if the pointer moves in),
+    /// or closes it if it's open.
+    func toggle() {
+        if viewModel.isExpanded {
+            viewModel.approvalsDismissed = !store.approvals.isEmpty
+            collapse()
+        } else {
+            viewModel.approvalsDismissed = false
+            viewModel.isHovering = true
+            holdOpenUntil = Date().addingTimeInterval(5)
+            viewModel.updateExpansion(store: store)
+        }
+    }
+
     /// The screen the notch is on.
     var screen: NSScreen? { panel.screen ?? geometry?.screen }
 

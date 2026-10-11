@@ -9,6 +9,7 @@ struct SettingsView: View {
     @AppStorage(PipDefaults.character) private var character = CharacterStyle.livingNotch.rawValue
     @AppStorage(PipDefaults.soundsEnabled) private var soundsEnabled = true
     @AppStorage(PipDefaults.soundVolume) private var volume = 0.6
+    @AppStorage(HotKeyCenter.enabledKey) private var shortcutsEnabled = true
     @State private var previewMood: Mood = .working
     @State private var openAtLogin = SMAppService.mainApp.status == .enabled
 
@@ -90,6 +91,26 @@ struct SettingsView: View {
                     SoundRow(cue: cue)
                         .disabled(!soundsEnabled)
                 }
+            }
+
+            Section {
+                Toggle("Enable keyboard shortcuts", isOn: $shortcutsEnabled)
+                ForEach(Shortcut.allCases) { shortcut in
+                    LabeledContent {
+                        Text(shortcut.keys)
+                            .font(.system(.body, design: .rounded).weight(.medium))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 2)
+                            .background(RoundedRectangle(cornerRadius: 5).fill(Color.secondary.opacity(0.15)))
+                    } label: {
+                        Text(shortcut.title)
+                    }
+                    .disabled(!shortcutsEnabled)
+                }
+            } header: {
+                Text("Shortcuts")
+            } footer: {
+                Text("Work from any app. Allow and Deny are only active while a request is waiting.")
             }
 
             Section("General") {

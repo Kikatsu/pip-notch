@@ -31,7 +31,7 @@ final class SessionStoreTests: XCTestCase {
     func testPermissionRequestQueuesApprovalAndReplies() {
         let store = SessionStore()
         var attention: [SessionStore.Attention] = []
-        store.onAttention = { attention.append($0) }
+        store.onAttention = { kind, _ in attention.append(kind) }
         var answered: ApprovalDecision?
 
         let id = store.handle(

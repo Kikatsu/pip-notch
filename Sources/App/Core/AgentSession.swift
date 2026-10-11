@@ -46,6 +46,8 @@ struct AgentSession: Identifiable, Equatable {
     var env: [String: String]
     /// The app the agent runs in, e.g. "VS Code" for the Claude Code extension, "Ghostty" for a CLI.
     var host: String?
+    /// Current git branch of `cwd`, if it's a repository.
+    var branch: String?
     var state: SessionState = .idle
     var stateChangedAt: Date
     var currentTool: String?
@@ -63,6 +65,20 @@ struct AgentSession: Identifiable, Equatable {
 }
 
 struct PendingApproval: Identifiable, Equatable {
+    enum Kind: Equatable {
+        /// A tool call to allow or deny.
+        case tool
+        /// Claude finished planning (ExitPlanMode): approve the plan or send it back with notes.
+        case plan(markdown: String)
+        /// The agent asked a question (AskUserQuestion): shown here, answered in the terminal.
+        case question([Question])
+    }
+
+    struct Question: Equatable {
+        let text: String
+        let options: [String]
+    }
+
     let id: UUID
     let sessionID: String
     let agent: AgentKind
@@ -71,10 +87,25 @@ struct PendingApproval: Identifiable, Equatable {
     let title: String
     let detail: String
     let receivedAt: Date
+    var kind: Kind = .tool
 }
 
-enum ApprovalDecision: String {
-    case allow, deny, passthrough
+enum ApprovalDecision: Equatable {
+    case allow
+    /// Deny, optionally telling the agent why or what to do instead.
+    case deny(String?)
+    /// Let the agent ask in its own UI as if Pip weren't there.
+    case passthrough
+
+    static let deny = ApprovalDecision.deny(nil)
+
+    var name: String {
+        switch self {
+        case .allow: "allow"
+        case .deny: "deny"
+        case .passthrough: "passthrough"
+        }
+    }
 }
 
 enum ToolSummary {

@@ -36,6 +36,8 @@ struct NotchActions {
     var resolve: (UUID, ApprovalDecision) -> Void
     var dismissApprovals: () -> Void
     var jump: (AgentSession) -> Void
+    var answerInTerminal: (PendingApproval) -> Void
+    var toggleMute: () -> Void
     var openSettings: () -> Void
     var runDemo: () -> Void
     var quit: () -> Void

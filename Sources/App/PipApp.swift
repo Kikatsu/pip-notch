@@ -13,7 +13,10 @@ struct PipApp: App {
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
-    private let store = SessionStore(hostName: { HostApps.label(env: $0.env, pid: $0.pid) })
+    private let store = SessionStore(
+        hostName: { HostApps.label(env: $0.env, pid: $0.pid) },
+        gitBranch: GitInfo.branch(at:)
+    )
     private let server = SocketServer()
     private let integrations = IntegrationsModel()
     private lazy var settings = SettingsWindowController(integrations: integrations) { [weak self] in
@@ -54,18 +57,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 self?.notch?.collapse()
                 TerminalJumper.focus(session)
             },
+            answerInTerminal: { [weak self] approval in self?.answerInTerminal(approval) },
+            toggleMute: { Self.toggleMute() },
             openSettings: { [weak self] in self?.openSettings(fromNotch: true) },
             runDemo: { [weak self] in self.map { DemoScript.run(on: $0.store) } },
             quit: { NSApp.terminate(nil) }
         )
         let notch = NotchWindowController(store: store, actions: actions)
         self.notch = notch
-        store.onAttention = { [weak self] attention in
-            self?.notch?.handle(attention)
-            SoundPlayer.shared.play(attention.cue)
+        store.onAttention = { [weak self] attention, session in
+            self?.attention(attention, session: session)
         }
         notch.show()
         setUpStatusItem()
+        setUpShortcuts()
 
         integrations.$connected
             .map { !$0.isEmpty }
@@ -81,6 +86,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         if CommandLine.arguments.contains("--demo") {
             DemoScript.run(on: store)
+        }
+        if CommandLine.arguments.contains("--demo-review") {
+            DemoScript.runReview(on: store)
         }
         if CommandLine.arguments.contains("--settings") {
             openSettings()
@@ -108,6 +116,79 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             return
         }
         connection.watchForHangup { [weak self] in self?.store.approvalAbandoned(id) }
+    }
+
+    /// Approvals always surface. A finished turn stays quiet if you're already looking at
+    /// the app it runs in: you saw it finish.
+    private func attention(_ attention: SessionStore.Attention, session: AgentSession) {
+        if attention == .finished,
+           let host = HostApps.app(env: session.env, pid: session.pid),
+           host.processIdentifier == NSWorkspace.shared.frontmostApplication?.processIdentifier {
+            return
+        }
+        notch?.handle(attention)
+        SoundPlayer.shared.play(attention.cue)
+    }
+
+    private func answerInTerminal(_ approval: PendingApproval) {
+        let session = store.sessions[approval.sessionID]
+        store.resolve(approval.id, with: .passthrough)
+        notch?.collapse()
+        if let session { TerminalJumper.focus(session) }
+    }
+
+    private static func toggleMute() {
+        let defaults = UserDefaults.standard
+        defaults.set(!defaults.bool(forKey: PipDefaults.soundsEnabled), forKey: PipDefaults.soundsEnabled)
+    }
+
+    // MARK: Shortcuts
+
+    private func setUpShortcuts() {
+        UserDefaults.standard.register(defaults: [HotKeyCenter.enabledKey: true])
+        store.$approvals
+            .map { !$0.isEmpty }
+            .removeDuplicates()
+            .sink { [weak self] _ in DispatchQueue.main.async { self?.refreshShortcuts() } }
+            .store(in: &subscriptions)
+        NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.refreshShortcuts() }
+            .store(in: &subscriptions)
+        refreshShortcuts()
+    }
+
+    private func refreshShortcuts() {
+        let enabled = UserDefaults.standard.bool(forKey: HotKeyCenter.enabledKey)
+        let pending = !store.approvals.isEmpty
+        for shortcut in Shortcut.allCases {
+            let active = enabled && (!shortcut.onlyWhileApprovalPending || pending)
+            HotKeyCenter.shared.set(shortcut, active: active) { [weak self] in self?.run(shortcut) }
+        }
+    }
+
+    private func run(_ shortcut: Shortcut) {
+        switch shortcut {
+        case .togglePanel:
+            notch?.toggle()
+        case .allow, .deny:
+            guard let approval = store.approvals.first else { return }
+            if case .question = approval.kind {
+                answerInTerminal(approval)
+            } else if shortcut == .allow {
+                store.resolve(approval.id, with: .allow)
+            } else if case .plan = approval.kind {
+                store.resolve(approval.id, with: .deny("The user wants to keep planning. Ask what they'd like to change."))
+            } else {
+                store.resolve(approval.id, with: .deny)
+            }
+        case .jump:
+            guard let session = store.approvals.first.flatMap({ store.sessions[$0.sessionID] }) ?? store.orderedSessions.first else { return }
+            notch?.collapse()
+            TerminalJumper.focus(session)
+        case .mute:
+            Self.toggleMute()
+        }
     }
 
     private func openSettings(fromNotch: Bool = false) {

@@ -18,20 +18,23 @@ final class SessionStore: ObservableObject {
     @Published private(set) var now = Date()
 
     /// Called when a new approval arrives or a turn finishes, so the notch can open itself.
-    var onAttention: ((Attention) -> Void)?
+    var onAttention: ((Attention, AgentSession) -> Void)?
 
     enum Attention { case approval, needsInput, finished, error, rateLimited }
 
     private var responders: [UUID: (ApprovalDecision) -> Void] = [:]
     private let isProcessAlive: (pid_t) -> Bool
     private let hostName: (HookEnvelope) -> String?
+    private let gitBranch: (String) -> String?
 
     init(
         isProcessAlive: @escaping (pid_t) -> Bool = ProcessTree.isAlive,
-        hostName: @escaping (HookEnvelope) -> String? = { _ in nil }
+        hostName: @escaping (HookEnvelope) -> String? = { _ in nil },
+        gitBranch: @escaping (String) -> String? = { _ in nil }
     ) {
         self.isProcessAlive = isProcessAlive
         self.hostName = hostName
+        self.gitBranch = gitBranch
     }
 
     // MARK: Derived state
@@ -77,11 +80,16 @@ final class SessionStore: ObservableObject {
         }
         var createdApproval: UUID?
 
+        let isNew = sessions[event.sessionID] == nil
         var session = sessions[event.sessionID] ?? AgentSession(
             id: event.sessionID, agent: event.agent, cwd: event.cwd, pid: event.pid,
             env: event.env, host: hostName(event), stateChangedAt: time, updatedAt: time
         )
         if !event.cwd.isEmpty { session.cwd = event.cwd }
+        // Branches change between turns; re-read only at turn boundaries, not on every tool call.
+        if isNew || ["SessionStart", "UserPromptSubmit", "Stop"].contains(event.eventName) {
+            session.branch = session.cwd.isEmpty ? nil : gitBranch(session.cwd)
+        }
         if let pid = event.pid { session.pid = pid }
         if !event.env.isEmpty { session.env = event.env }
         session.updatedAt = time
@@ -134,7 +142,7 @@ final class SessionStore: ObservableObject {
             case "idle_prompt":
                 if session.state != .finished { set(.idle) }
             case "agent_needs_input", "elicitation_dialog", "elicitation_url_dialog":
-                if session.state != .needsInput { onAttention?(.needsInput) }
+                if session.state != .needsInput { onAttention?(.needsInput, session) }
                 set(.needsInput)
             default:
                 break
@@ -146,7 +154,7 @@ final class SessionStore: ObservableObject {
             session.lastMessage = event["last_assistant_message"].map(Self.firstLine) ?? session.lastMessage
             session.lastDuration = session.turnStartedAt.map { time.timeIntervalSince($0) }
             cancelApprovals(forSession: session.id)
-            onAttention?(.finished)
+            onAttention?(.finished, session)
 
         case "StopFailure":
             let limited = event["error"] == "rate_limit"
@@ -154,7 +162,7 @@ final class SessionStore: ObservableObject {
             session.currentTool = nil
             session.errorText = event["error_details"] ?? event["error"]
             cancelApprovals(forSession: session.id)
-            onAttention?(limited ? .rateLimited : .error)
+            onAttention?(limited ? .rateLimited : .error, session)
 
         default:
             break
@@ -164,6 +172,7 @@ final class SessionStore: ObservableObject {
     }
 
     func resolve(_ id: UUID, with decision: ApprovalDecision) {
+        Log.events.info("Approval \(decision.name, privacy: .public)")
         responders.removeValue(forKey: id)?(decision)
         approvals.removeAll { $0.id == id }
     }
@@ -194,13 +203,36 @@ final class SessionStore: ObservableObject {
     private func addApproval(for session: AgentSession, event: HookEnvelope, at time: Date, reply: @escaping (ApprovalDecision) -> Void) -> UUID {
         let tool = event["tool_name"] ?? "Tool"
         let summary = ToolSummary.describe(tool: tool, input: event.payload["tool_input"] as? [String: Any] ?? [:])
-        let approval = PendingApproval(
+        let input = event.payload["tool_input"] as? [String: Any] ?? [:]
+        var approval = PendingApproval(
             id: UUID(), sessionID: session.id, agent: session.agent, projectName: session.projectName,
             toolName: tool, title: summary.title, detail: summary.detail, receivedAt: time
         )
+        switch tool {
+        case "ExitPlanMode":
+            approval = PendingApproval(
+                id: approval.id, sessionID: session.id, agent: session.agent, projectName: session.projectName,
+                toolName: tool, title: "Plan ready for review", detail: "", receivedAt: time,
+                kind: .plan(markdown: input["plan"] as? String ?? "")
+            )
+        case "AskUserQuestion":
+            let questions = (input["questions"] as? [[String: Any]] ?? []).map { item in
+                PendingApproval.Question(
+                    text: item["question"] as? String ?? "",
+                    options: (item["options"] as? [[String: Any]] ?? []).compactMap { $0["label"] as? String }
+                )
+            }
+            approval = PendingApproval(
+                id: approval.id, sessionID: session.id, agent: session.agent, projectName: session.projectName,
+                toolName: tool, title: "Has a question for you", detail: "", receivedAt: time,
+                kind: .question(questions)
+            )
+        default:
+            break
+        }
         responders[approval.id] = reply
         approvals.append(approval)
-        onAttention?(.approval)
+        onAttention?(.approval, session)
         return approval.id
     }
 
