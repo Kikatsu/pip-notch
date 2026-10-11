@@ -12,7 +12,9 @@ final class NotchViewModel: ObservableObject {
     /// At least one agent has Pip's hooks installed.
     @Published var anyAgentConnected = false
     /// The black shape's frame in the window's top-left coordinate space, reported by the view.
-    @Published var shapeFrame: CGRect = .zero
+    @Published var shapeFrame: CGRect = .zero {
+        didSet { Log.ui.debug("shape frame \(String(describing: self.shapeFrame), privacy: .public)") }
+    }
 
     /// The user chose "Later" on the current approvals; stay compact until a new one arrives.
     var approvalsDismissed = false

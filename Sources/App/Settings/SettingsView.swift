@@ -212,9 +212,10 @@ extension Mood {
 final class SettingsWindowController {
     /// Centres the window on the screen under the pointer: the one with the notch you just clicked,
     /// not necessarily the main display.
-    private func place(_ window: NSWindow) {
+    private func place(_ window: NSWindow, on preferred: NSScreen?) {
         let pointer = NSEvent.mouseLocation
-        guard let screen = NSScreen.screens.first(where: { NSMouseInRect(pointer, $0.frame, false) }) ?? NSScreen.main else { return }
+        let underPointer = NSScreen.screens.first { $0.frame.insetBy(dx: -2, dy: -2).contains(pointer) }
+        guard let screen = preferred ?? underPointer ?? NSScreen.main else { return }
         let area = screen.visibleFrame
         var frame = window.frame
         frame.size.height = min(frame.height, area.height - 40)
@@ -231,7 +232,8 @@ final class SettingsWindowController {
         self.runDemo = runDemo
     }
 
-    func show() {
+    /// Opens Settings, centred on `screen` (the notch's screen when opened from the notch).
+    func show(on screen: NSScreen? = nil) {
         if window == nil {
             let host = NSHostingController(rootView: SettingsView(integrations: integrations, runDemo: runDemo))
             let window = NSWindow(contentViewController: host)
@@ -241,7 +243,7 @@ final class SettingsWindowController {
             window.setContentSize(NSSize(width: 560, height: 720))
             self.window = window
         }
-        if let window, !window.isVisible { place(window) }
+        if let window, !window.isVisible || screen != nil { place(window, on: screen) }
         integrations.refresh()
         Log.ui.notice("Settings window shown")
         NSApp.activate()

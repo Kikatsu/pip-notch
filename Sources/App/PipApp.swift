@@ -54,7 +54,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 self?.notch?.collapse()
                 TerminalJumper.focus(session)
             },
-            openSettings: { [weak self] in self?.openSettings() },
+            openSettings: { [weak self] in self?.openSettings(fromNotch: true) },
             runDemo: { [weak self] in self.map { DemoScript.run(on: $0.store) } },
             quit: { NSApp.terminate(nil) }
         )
@@ -104,10 +104,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         connection.watchForHangup { [weak self] in self?.store.approvalAbandoned(id) }
     }
 
-    private func openSettings() {
-        Log.ui.notice("Open Settings requested")
+    private func openSettings(fromNotch: Bool = false) {
+        Log.ui.notice("Open Settings requested (from notch: \(fromNotch, privacy: .public))")
+        let screen = fromNotch ? notch?.screen : nil
         notch?.collapse()
-        settings.show()
+        settings.show(on: screen)
     }
 
     // MARK: Menu bar item

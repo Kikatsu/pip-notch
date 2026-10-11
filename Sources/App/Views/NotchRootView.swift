@@ -32,15 +32,17 @@ struct NotchRootView: View {
                 .opacity(!expanded && mood == .asleep ? 0 : 1)
         )
         .background(
+            // Reports the black shape's frame so the controller knows where the pointer counts as inside.
+            // (A preference key here never updated past its first value inside NSHostingView.)
             GeometryReader { proxy in
-                Color.clear.preference(key: NotchFrameKey.self, value: proxy.frame(in: .named(Self.space)))
+                let frame = proxy.frame(in: .named(Self.space))
+                Color.clear
+                    .onAppear { viewModel.shapeFrame = frame }
+                    .onChange(of: frame) { _, newFrame in viewModel.shapeFrame = newFrame }
             }
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .coordinateSpace(name: Self.space)
-        .onPreferenceChange(NotchFrameKey.self) { frame in
-            MainActor.assumeIsolated { viewModel.shapeFrame = frame }
-        }
         .animation(spring, value: expanded)
         .animation(spring, value: mood)
         .animation(spring, value: store.approvals.count)
@@ -134,10 +136,6 @@ struct NotchRootView: View {
     }
 }
 
-private struct NotchFrameKey: PreferenceKey {
-    static var defaultValue: CGRect = .zero
-    static func reduce(value: inout CGRect, nextValue: () -> CGRect) { value = nextValue() }
-}
 
 private struct SettingsGearButton: View {
     let action: () -> Void

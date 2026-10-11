@@ -103,6 +103,9 @@ final class NotchWindowController {
         viewModel.updateExpansion(store: store)
     }
 
+    /// The screen the notch is on.
+    var screen: NSScreen? { panel.screen ?? geometry?.screen }
+
     /// Closes the panel right away (e.g. when a settings window opens).
     func collapse() {
         menuOpen = false
@@ -134,7 +137,7 @@ final class NotchWindowController {
                 let since = outsideSince ?? now
                 outsideSince = since
                 if now.timeIntervalSince(since) >= Self.hoverCloseDelay {
-                    Log.ui.notice("Hover: close (pointer left)")
+                    Log.ui.notice("Hover: close (pointer left) pointer=\(String(describing: pointer), privacy: .public) rect=\(String(describing: self.interactiveRect()), privacy: .public) shape=\(String(describing: self.viewModel.shapeFrame), privacy: .public)")
                     viewModel.isHovering = false
                     outsideSince = nil
                 }
