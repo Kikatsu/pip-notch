@@ -1,7 +1,7 @@
 import Foundation
 
 enum AgentKind: String, CaseIterable {
-    case claude, codex, cursor, antigravity, unknown
+    case claude, codex, gemini, copilot, droid, opencode, pi, cursor, antigravity, unknown
 
     init(raw: String) { self = AgentKind(rawValue: raw) ?? .unknown }
 
@@ -9,6 +9,11 @@ enum AgentKind: String, CaseIterable {
         switch self {
         case .claude: "Claude Code"
         case .codex: "Codex"
+        case .gemini: "Gemini CLI"
+        case .copilot: "Copilot CLI"
+        case .droid: "Droid"
+        case .opencode: "OpenCode"
+        case .pi: "Pi"
         case .cursor: "Cursor"
         case .antigravity: "Antigravity"
         case .unknown: "Agent"
@@ -37,6 +42,8 @@ struct AgentSession: Identifiable, Equatable {
     var cwd: String
     var pid: pid_t?
     var env: [String: String]
+    /// The app the agent runs in, e.g. "VS Code" for the Claude Code extension, "Ghostty" for a CLI.
+    var host: String?
     var state: SessionState = .idle
     var stateChangedAt: Date
     var currentTool: String?

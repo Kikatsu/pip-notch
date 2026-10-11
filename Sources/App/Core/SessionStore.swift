@@ -24,9 +24,14 @@ final class SessionStore: ObservableObject {
 
     private var responders: [UUID: (ApprovalDecision) -> Void] = [:]
     private let isProcessAlive: (pid_t) -> Bool
+    private let hostName: (HookEnvelope) -> String?
 
-    init(isProcessAlive: @escaping (pid_t) -> Bool = ProcessTree.isAlive) {
+    init(
+        isProcessAlive: @escaping (pid_t) -> Bool = ProcessTree.isAlive,
+        hostName: @escaping (HookEnvelope) -> String? = { _ in nil }
+    ) {
         self.isProcessAlive = isProcessAlive
+        self.hostName = hostName
     }
 
     // MARK: Derived state
@@ -74,7 +79,7 @@ final class SessionStore: ObservableObject {
 
         var session = sessions[event.sessionID] ?? AgentSession(
             id: event.sessionID, agent: event.agent, cwd: event.cwd, pid: event.pid,
-            env: event.env, stateChangedAt: time, updatedAt: time
+            env: event.env, host: hostName(event), stateChangedAt: time, updatedAt: time
         )
         if !event.cwd.isEmpty { session.cwd = event.cwd }
         if let pid = event.pid { session.pid = pid }

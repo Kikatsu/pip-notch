@@ -13,7 +13,7 @@ struct PipApp: App {
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
-    private let store = SessionStore()
+    private let store = SessionStore(hostName: { HostApps.label(env: $0.env, pid: $0.pid) })
     private let server = SocketServer()
     private let integrations = IntegrationsModel()
     private lazy var settings = SettingsWindowController(integrations: integrations) { [weak self] in
@@ -92,6 +92,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // MARK: Events
 
     private func receive(_ envelope: HookEnvelope, _ connection: BridgeConnection?) {
+        Log.events.info("\(envelope.agent.rawValue, privacy: .public) \(envelope.eventName, privacy: .public) session=\(envelope.sessionID, privacy: .public)")
         guard let connection else {
             store.handle(envelope)
             return

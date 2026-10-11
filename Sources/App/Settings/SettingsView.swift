@@ -15,7 +15,7 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section {
-                ForEach(integrations.integrations) { integration in
+                ForEach(integrations.integrations.filter { !$0.agent.isIDE }) { integration in
                     AgentRow(integration: integration, model: integrations)
                 }
                 if let error = integrations.lastError {
@@ -24,9 +24,29 @@ struct SettingsView: View {
                         .font(.callout)
                 }
             } header: {
-                Text("Agents")
+                HStack {
+                    Text("Terminal agents")
+                    Spacer()
+                    let missing = integrations.integrations.filter { $0.isDetected && !integrations.connected.contains($0.agent) }
+                    if !missing.isEmpty {
+                        Button("Connect all found (\(missing.count))") {
+                            for integration in missing { integrations.setConnected(integration, true) }
+                        }
+                        .controlSize(.small)
+                    }
+                }
             } footer: {
-                Text("Connecting adds Pip's hooks to that agent's config file and keeps a .pip-backup copy. Disconnecting removes only Pip's hooks.")
+                Text("Claude Code and Codex hooks also cover their VS Code and Cursor extensions. Pip shows which editor a session runs in and jumps to its window.")
+            }
+
+            Section {
+                ForEach(integrations.integrations.filter(\.agent.isIDE)) { integration in
+                    AgentRow(integration: integration, model: integrations)
+                }
+            } header: {
+                Text("Editors")
+            } footer: {
+                Text("Connecting adds Pip's hooks to the agent's config and keeps a .pip-backup copy, or installs a small Pip plugin file. Disconnecting removes only what Pip added.")
             }
 
             Section("Character") {
@@ -95,6 +115,7 @@ private struct AgentRow: View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
+                    AgentBadge(agent: integration.agent)
                     Text(integration.agent.displayName).font(.headline)
                     Text(status(connected: connected))
                         .font(.caption)

@@ -51,9 +51,12 @@ struct SessionRow: View {
                         Text(session.projectName)
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(.white)
-                        Text(session.agent.displayName)
+                            .lineLimit(1)
+                        AgentBadge(agent: session.agent)
+                        Text(subtitle)
                             .font(.system(size: 11))
                             .foregroundStyle(Palette.quiet)
+                            .lineLimit(1)
                     }
                     Text(statusLine)
                         .font(.system(size: 11.5))
@@ -75,13 +78,21 @@ struct SessionRow: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
-        .help("Show this session's terminal")
+        .help("Go to this session")
+    }
+
+    /// "Claude Code", or "Claude Code · VS Code" when it runs inside an editor or a named terminal.
+    private var subtitle: String {
+        guard let host = session.host, host != session.agent.displayName, !session.agent.isIDE else {
+            return session.agent.displayName
+        }
+        return "\(session.agent.displayName) · \(host)"
     }
 
     private var statusLine: String {
         switch session.state {
         case .working: session.currentTool ?? session.lastPrompt.map { "Working on: \($0)" } ?? "Thinking…"
-        case .needsInput: "Waiting for your answer in the terminal"
+        case .needsInput: "Waiting for your answer"
         case .finished: session.lastMessage ?? "Finished"
         case .error: session.errorText.map { "Error: \($0)" } ?? "Error"
         case .rateLimited: "Rate limit reached"

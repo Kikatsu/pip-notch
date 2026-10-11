@@ -19,6 +19,9 @@ struct AgentIntegration: Identifiable {
         case cursor([String])
         /// `{"pip": {"enabled", Event: [...]}}`: Antigravity.
         case antigravity
+        /// A whole file that belongs to Pip (a plugin, an extension, a hooks file of its own).
+        /// Installing writes it; disconnecting deletes it. The closure gets the bridge path.
+        case ownedFile((String) -> String)
     }
 
     let agent: AgentKind
@@ -36,15 +39,28 @@ struct AgentIntegration: Identifiable {
     }
 
     func isInstalled() -> Bool {
-        (try? HookFile(url: configURL).read()).map(HookConfig.containsPip) ?? false
+        if case .ownedFile = format {
+            return (try? String(contentsOf: configURL, encoding: .utf8))?.contains(HookConfig.marker) ?? false
+        }
+        return (try? HookFile(url: configURL).read()).map(HookConfig.containsPip) ?? false
     }
 
     func install(bridgePath: String) throws {
+        if case .ownedFile(let contents) = format {
+            try FileManager.default.createDirectory(at: configURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try Data(contents(bridgePath).utf8).write(to: configURL, options: .atomic)
+            return
+        }
         let file = HookFile(url: configURL)
         try file.write(HookConfig.installing(format, agent: agent, bridgePath: bridgePath, into: try file.read()))
     }
 
     func uninstall() throws {
+        if case .ownedFile = format {
+            guard isInstalled() else { return }
+            try FileManager.default.removeItem(at: configURL)
+            return
+        }
         let file = HookFile(url: configURL)
         try file.write(HookConfig.removing(format, from: try file.read()))
     }
@@ -79,6 +95,52 @@ struct AgentIntegration: Identifiable {
                 note: "Codex asks you to trust new hooks: run /hooks in Codex once and approve Pip's."
             ),
             AgentIntegration(
+                agent: .gemini,
+                configURL: at(".gemini/settings.json"),
+                // Gemini has no async hooks and counts timeouts in milliseconds.
+                format: .claudeStyle([
+                    ("SessionStart", .sync(timeout: 5000)), ("SessionEnd", .sync(timeout: 5000)),
+                    ("BeforeAgent", .sync(timeout: 5000)), ("AfterAgent", .sync(timeout: 5000)),
+                    ("BeforeTool", .sync(timeout: 5000)), ("AfterTool", .sync(timeout: 5000)),
+                    ("Notification", .sync(timeout: 5000)),
+                ]),
+                detectPaths: [at(".gemini/settings.json").path, "/opt/homebrew/bin/gemini", "/usr/local/bin/gemini"],
+                note: "Status only: approve Gemini's tool prompts in the terminal; the notch tells you when one is waiting."
+            ),
+            AgentIntegration(
+                agent: .copilot,
+                configURL: at(".copilot/hooks/pip.json"),
+                format: .ownedFile(AgentPlugins.copilot(bridgePath:)),
+                detectPaths: [at(".copilot").path],
+                note: "Status only: the notch tells you when Copilot is waiting for an answer."
+            ),
+            AgentIntegration(
+                agent: .droid,
+                configURL: droidConfig(home: home),
+                format: .claudeStyle([
+                    ("SessionStart", .sync(timeout: 5)), ("SessionEnd", .sync(timeout: 5)),
+                    ("UserPromptSubmit", .sync(timeout: 5)), ("PreToolUse", .sync(timeout: 5)),
+                    ("PostToolUse", .sync(timeout: 5)), ("Notification", .sync(timeout: 5)),
+                    ("Stop", .sync(timeout: 5)),
+                ]),
+                detectPaths: [at(".factory").path],
+                note: "Status only: the notch tells you when Droid is waiting for permission."
+            ),
+            AgentIntegration(
+                agent: .opencode,
+                configURL: at(".config/opencode/plugins/pip.js"),
+                format: .ownedFile(AgentPlugins.openCode(bridgePath:)),
+                detectPaths: [at(".config/opencode").path, at(".opencode").path],
+                note: "Installs a small plugin. Restart OpenCode to load it."
+            ),
+            AgentIntegration(
+                agent: .pi,
+                configURL: at(".pi/agent/extensions/pip.ts"),
+                format: .ownedFile(AgentPlugins.pi(bridgePath:)),
+                detectPaths: [at(".pi").path],
+                note: "Installs a small extension. Restart Pi to load it."
+            ),
+            AgentIntegration(
                 agent: .cursor,
                 configURL: at(".cursor/hooks.json"),
                 format: .cursor([
@@ -97,6 +159,12 @@ struct AgentIntegration: Identifiable {
             ),
         ]
     }
+}
+
+/// Droid reads `~/.factory/hooks.json` when it exists, otherwise the `hooks` key of `settings.json`.
+private func droidConfig(home: URL) -> URL {
+    let hooks = home.appendingPathComponent(".factory/hooks.json")
+    return FileManager.default.fileExists(atPath: hooks.path) ? hooks : home.appendingPathComponent(".factory/settings.json")
 }
 
 /// Pure transforms over a parsed config file. Pip's entries are recognised by the bridge path.
@@ -133,6 +201,9 @@ enum HookConfig {
             }
             result["hooks"] = hooks
             if result["version"] == nil { result["version"] = 1 }
+
+        case .ownedFile:
+            break
 
         case .antigravity:
             func handler(_ event: String) -> [String: Any] {
@@ -181,6 +252,9 @@ enum HookConfig {
 
         case .antigravity:
             result[antigravityKey] = nil
+
+        case .ownedFile:
+            break
         }
         return result
     }

@@ -7,10 +7,125 @@ import Foundation
 enum AgentAdapter {
     static func normalize(_ payload: [String: Any], agent: AgentKind) -> [String: Any] {
         switch agent {
+        case .claude, .codex, .unknown: payload
         case .cursor: cursor(payload)
         case .antigravity: antigravity(payload)
-        case .claude, .codex, .unknown: payload
+        case .gemini: gemini(payload)
+        case .copilot: copilot(payload)
+        case .droid: droid(payload)
+        // Pip's own OpenCode plugin and Pi extension already send Claude-shaped events.
+        case .opencode, .pi: canonicalizingTool(payload)
         }
+    }
+
+    // MARK: Shared tool naming
+
+    /// Maps each agent's tool names onto the few Pip knows how to describe (Bash, Edit, Read).
+    static func canonicalTool(name: String, input: [String: Any]) -> (String, [String: Any]) {
+        func string(_ keys: [String]) -> String? { keys.lazy.compactMap { input[$0] as? String }.first }
+        let lower = name.lowercased()
+        let shell = ["bash", "shell", "run_shell_command", "run_command", "execute", "exec", "terminal", "powershell"]
+        if shell.contains(lower), let command = string(["command", "cmd", "CommandLine", "script"]) {
+            return ("Bash", ["command": command])
+        }
+        let path = string(["file_path", "filePath", "path", "absolute_path", "TargetFile", "AbsolutePath", "file"])
+        if let path {
+            if ["read", "read_file", "view", "view_file", "cat", "read_many_files"].contains(lower) {
+                return ("Read", ["file_path": path])
+            }
+            if ["edit", "write", "write_file", "replace", "apply_patch", "patch", "create", "str_replace", "multiedit", "multi_edit"].contains(lower) {
+                return ("Edit", ["file_path": path])
+            }
+        }
+        return (name, input)
+    }
+
+    private static func canonicalizingTool(_ payload: [String: Any]) -> [String: Any] {
+        guard let name = payload["tool_name"] as? String else { return payload }
+        var out = payload
+        let mapped = canonicalTool(name: name, input: payload["tool_input"] as? [String: Any] ?? [:])
+        out["tool_name"] = mapped.0
+        out["tool_input"] = mapped.1
+        return out
+    }
+
+    // MARK: Gemini CLI (~/.gemini/settings.json)
+
+    static func gemini(_ p: [String: Any]) -> [String: Any] {
+        var out = p
+        switch p["hook_event_name"] as? String ?? "" {
+        case "BeforeAgent":
+            out["hook_event_name"] = "UserPromptSubmit"
+        case "AfterAgent":
+            out["hook_event_name"] = "Stop"
+            out["last_assistant_message"] = p["prompt_response"]
+        case "BeforeTool":
+            out["hook_event_name"] = "PreToolUse"
+        case "AfterTool":
+            out["hook_event_name"] = "PostToolUse"
+        case "Notification":
+            // Gemini's only notification is "ToolPermission": it is waiting for you in the terminal.
+            out["notification_type"] = "agent_needs_input"
+        case "SessionStart", "SessionEnd":
+            break
+        default:
+            out["hook_event_name"] = "AgentActive"
+        }
+        return canonicalizingTool(out)
+    }
+
+    // MARK: GitHub Copilot CLI (~/.copilot/hooks/pip.json)
+
+    /// Copilot's camelCase payloads carry no event name; pip-bridge injects it from its arguments.
+    static func copilot(_ p: [String: Any]) -> [String: Any] {
+        var out: [String: Any] = ["session_id": p["sessionId"] as? String ?? "copilot"]
+        out["cwd"] = p["cwd"]
+        switch p["hook_event_name"] as? String ?? "" {
+        case "sessionStart":
+            out["hook_event_name"] = "SessionStart"
+        case "sessionEnd":
+            out["hook_event_name"] = "SessionEnd"
+        case "userPromptSubmitted":
+            out["hook_event_name"] = "UserPromptSubmit"
+            out["prompt"] = p["prompt"]
+        case "preToolUse", "postToolUse":
+            var args = p["toolArgs"] as? [String: Any] ?? [:]
+            if let text = p["toolArgs"] as? String,
+               let parsed = (try? JSONSerialization.jsonObject(with: Data(text.utf8))) as? [String: Any] {
+                args = parsed
+            }
+            out["hook_event_name"] = "PreToolUse"
+            out["tool_name"] = p["toolName"] as? String ?? "tool"
+            out["tool_input"] = args
+        case "agentStop":
+            out["hook_event_name"] = "Stop"
+        case "errorOccurred":
+            out["hook_event_name"] = "StopFailure"
+            out["error"] = "error"
+            out["error_details"] = (p["error"] as? String) ?? (p["error"] as? [String: Any])?["message"] as? String ?? "Copilot hit an error"
+        case "notification":
+            out["hook_event_name"] = "Notification"
+            switch p["notification_type"] as? String {
+            case "permission_prompt", "elicitation_dialog": out["notification_type"] = "agent_needs_input"
+            case "agent_idle": out["notification_type"] = "idle_prompt"
+            default: out["notification_type"] = p["notification_type"]
+            }
+        default:
+            out["hook_event_name"] = "AgentActive"
+        }
+        return canonicalizingTool(out)
+    }
+
+    // MARK: Factory Droid (~/.factory)
+
+    /// Droid speaks Claude's format but has no PermissionRequest hook: its permission
+    /// prompts arrive as notifications, answered in the terminal.
+    static func droid(_ p: [String: Any]) -> [String: Any] {
+        var out = p
+        if p["hook_event_name"] as? String == "Notification", p["notification_type"] as? String == "permission_prompt" {
+            out["notification_type"] = "agent_needs_input"
+        }
+        return canonicalizingTool(out)
     }
 
     // MARK: Cursor (~/.cursor/hooks.json)
@@ -99,9 +214,8 @@ enum AgentAdapter {
     }
 
     static func antigravityTool(name: String, args: [String: Any]) -> (String, [String: Any]) {
-        if name == "run_command" {
-            return ("Bash", ["command": args["CommandLine"] as? String ?? ""])
-        }
+        let mapped = canonicalTool(name: name, input: args)
+        if mapped.0 != name { return mapped }
         let file = ["TargetFile", "AbsolutePath", "FilePath", "File"].lazy.compactMap { args[$0] as? String }.first
         if let file {
             let reading = name.contains("view") || name.contains("read")

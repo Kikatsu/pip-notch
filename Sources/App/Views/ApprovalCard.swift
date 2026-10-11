@@ -11,6 +11,7 @@ struct ApprovalCard: View {
         VStack(alignment: .leading, spacing: 9) {
             HStack(spacing: 7) {
                 Circle().fill(Palette.amber).frame(width: 7, height: 7)
+                AgentBadge(agent: approval.agent)
                 Text("\(approval.agent.displayName) · \(approval.projectName)")
                     .lineLimit(1)
                 Spacer(minLength: 8)

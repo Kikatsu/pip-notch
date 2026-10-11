@@ -2,7 +2,7 @@
 
 A macOS notch companion that shows what your AI coding agents are doing. The notch itself has eyes: they scan while agents work, widen when one needs your approval, cross out on errors and squint happily when a task finishes.
 
-Works with Claude Code, Codex, Cursor and Antigravity.
+Works with Claude Code, Codex, Gemini CLI, Copilot CLI, Droid, OpenCode, Pi, Cursor and Antigravity, including the Claude Code and Codex extensions inside VS Code, Cursor and other editors.
 
 ## Build and run
 
@@ -30,10 +30,17 @@ Open **Settings…** from the eyes icon in the menu bar or the ⋯ menu in the n
 | --- | --- | --- |
 | Claude Code | `~/.claude/settings.json` | Status, tools, approvals from the notch |
 | Codex | `~/.codex/hooks.json` | Status, tools, approvals from the notch. Run `/hooks` in Codex once to trust Pip's hooks. |
+| Gemini CLI | `~/.gemini/settings.json` | Status, tools, replies; "needs you" when a tool prompt is waiting |
+| Copilot CLI | `~/.copilot/hooks/pip.json` (Pip's own file) | Status, tools; "needs you" on permission prompts |
+| Droid | `~/.factory/hooks.json`, else `~/.factory/settings.json` | Status, tools; "needs you" on permission prompts |
+| OpenCode | `~/.config/opencode/plugins/pip.js` (Pip's own plugin) | Status, tools; "needs you" on permission prompts |
+| Pi | `~/.pi/agent/extensions/pip.ts` (Pip's own extension) | Status, tools, replies |
 | Cursor | `~/.cursor/hooks.json` | Status, tools and replies. Approvals stay in Cursor. |
 | Antigravity | `~/.gemini/config/hooks.json` | Status and tools for the app and the `agy` CLI. Approvals stay in Antigravity. |
 
-Only Claude Code's and Codex's `PermissionRequest` hooks wait for you. Everything else runs in the background. If Pip isn't running, the bridge exits at once with the agent's neutral answer, so agents behave as if no hook were installed.
+The Claude Code and Codex editor extensions use the same hooks as their CLIs. Each session row shows where it runs ("Claude Code · VS Code", "Codex · Ghostty"), and clicking it opens that project's editor window.
+
+Only Claude Code's and Codex's `PermissionRequest` hooks wait for you, because only they fire exactly when the agent would otherwise ask you. Everything else runs in the background. If Pip isn't running, the bridge exits at once with the agent's neutral answer, so agents behave as if no hook were installed.
 
 ## Characters and sounds
 

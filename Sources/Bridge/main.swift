@@ -6,8 +6,8 @@ import Foundation
 // and for blocking events prints the decision JSON the agent expects. `event` names the
 // hook for agents whose payload doesn't (Antigravity).
 //
-// Every failure path still prints the agent's neutral answer (nothing for Claude Code and
-// Codex, `{}` for Cursor and Antigravity), so the agent behaves as if no hook were installed.
+// Every failure path still prints the agent's neutral answer (nothing for most agents,
+// `{}` for Cursor, Antigravity and Gemini CLI), so the agent behaves as if no hook were installed.
 
 let arguments = Array(CommandLine.arguments.dropFirst())
 let agent = arguments.first ?? "claude"
@@ -22,7 +22,7 @@ let eventName = payload?["hook_event_name"] as? String ?? (arguments.count > 1 ?
 let neutralOutput: String? = {
     switch agent {
     case "cursor": eventName == "beforeSubmitPrompt" ? #"{"continue":true}"# : "{}"
-    case "antigravity": "{}"
+    case "antigravity", "gemini": "{}"
     default: nil
     }
 }()
@@ -39,7 +39,7 @@ let blocking = BridgeWire.blockingEvents.contains(eventName) && (agent == "claud
 
 let forwardedEnv = [
     "TERM_PROGRAM", "TERM_SESSION_ID", "ITERM_SESSION_ID", "TMUX", "TMUX_PANE",
-    "__CFBundleIdentifier", "KITTY_WINDOW_ID", "WEZTERM_PANE",
+    "__CFBundleIdentifier", "KITTY_WINDOW_ID", "WEZTERM_PANE", "VSCODE_PID", "CLAUDE_CODE_ENTRYPOINT",
 ]
 var env: [String: String] = [:]
 for key in forwardedEnv {

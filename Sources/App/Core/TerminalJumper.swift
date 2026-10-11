@@ -10,7 +10,9 @@ enum TerminalJumper {
         if let pane = env["TMUX_PANE"], let tmux = env["TMUX"] {
             selectTmuxPane(pane, socket: tmux.split(separator: ",").first.map(String.init))
         }
-        if session.agent.isIDE || env["TERM_PROGRAM"] == "vscode", openWorkspace(of: session) {
+        let host = hostApp(of: session)
+        let inEditor = session.agent.isIDE || env["TERM_PROGRAM"] == "vscode" || host.map(HostApps.isEditor) == true
+        if inEditor, openWorkspace(of: session) {
             return
         }
         if let id = env["ITERM_SESSION_ID"], focusITerm(sessionID: id) {
@@ -22,26 +24,14 @@ enum TerminalJumper {
         if let pane = env["WEZTERM_PANE"] {
             run("/Applications/WezTerm.app/Contents/MacOS/wezterm", ["cli", "activate-pane", "--pane-id", pane])
         }
-        hostApp(of: session)?.activate()
+        host?.activate()
     }
 
     // MARK: Hosts
 
     /// The GUI app the session runs in: from the bundle id the terminal exported, else the process tree.
     static func hostApp(of session: AgentSession) -> NSRunningApplication? {
-        if let bundleID = session.env["__CFBundleIdentifier"],
-           let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first {
-            return app
-        }
-        var pid = session.pid
-        for _ in 0..<16 {
-            guard let current = pid, current > 1 else { return nil }
-            if let app = NSRunningApplication(processIdentifier: current), app.activationPolicy == .regular {
-                return app
-            }
-            pid = ProcessTree.parent(of: current)
-        }
-        return nil
+        HostApps.app(env: session.env, pid: session.pid)
     }
 
     /// Editors (Cursor, VS Code, Antigravity) focus the window that has the folder open.
@@ -117,5 +107,54 @@ enum TerminalJumper {
         process.executableURL = URL(fileURLWithPath: path)
         process.arguments = arguments
         try? process.run()
+    }
+}
+
+/// Finds and names the app an agent runs in: a terminal, or an editor hosting an extension.
+@MainActor
+enum HostApps {
+    static let editorBundleIDs: [String: String] = [
+        "com.microsoft.VSCode": "VS Code",
+        "com.microsoft.VSCodeInsiders": "VS Code Insiders",
+        "com.todesktop.230313mzl4w4u92": "Cursor",
+        "com.exafunction.windsurf": "Windsurf",
+        "com.vscodium": "VSCodium",
+        "dev.zed.Zed": "Zed",
+        "com.google.antigravity": "Antigravity",
+        "com.trae.app": "Trae",
+        "dev.kiro.desktop": "Kiro",
+    ]
+    static let editorNames: Set<String> = [
+        "Code", "Visual Studio Code", "Cursor", "Windsurf", "VSCodium", "Zed", "Antigravity", "Trae", "Kiro",
+    ]
+
+    static func isEditor(_ app: NSRunningApplication) -> Bool {
+        if let id = app.bundleIdentifier, editorBundleIDs[id] != nil { return true }
+        return app.localizedName.map(editorNames.contains) ?? false
+    }
+
+    /// The GUI app hosting a session: from the bundle id its terminal or editor exported, else the process tree.
+    static func app(env: [String: String], pid: pid_t?) -> NSRunningApplication? {
+        if let bundleID = env["__CFBundleIdentifier"],
+           let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first {
+            return app
+        }
+        var current = pid
+        for _ in 0..<16 {
+            guard let p = current, p > 1 else { return nil }
+            if let app = NSRunningApplication(processIdentifier: p), app.activationPolicy == .regular {
+                return app
+            }
+            current = ProcessTree.parent(of: p)
+        }
+        return nil
+    }
+
+    /// A short display name, e.g. "VS Code", "Ghostty".
+    static func label(env: [String: String], pid: pid_t?) -> String? {
+        if let bundleID = env["__CFBundleIdentifier"], let name = editorBundleIDs[bundleID] { return name }
+        guard let app = app(env: env, pid: pid) else { return nil }
+        if let id = app.bundleIdentifier, let name = editorBundleIDs[id] { return name }
+        return app.localizedName == "Code" ? "VS Code" : app.localizedName
     }
 }
