@@ -4,7 +4,9 @@ import SwiftUI
 struct NotchRootView: View {
     @ObservedObject var viewModel: NotchViewModel
     @ObservedObject var store: SessionStore
+    @ObservedObject var usage: UsageStore
     let actions: NotchActions
+    @AppStorage(UsageStore.visibleKey) private var showLimits = true
     @AppStorage(PipDefaults.character) private var character = CharacterStyle.livingNotch.rawValue
 
     private var spring: Animation { .spring(response: 0.38, dampingFraction: 0.8) }
@@ -89,6 +91,10 @@ struct NotchRootView: View {
                 let face = CharacterView.largeSize(for: style)
                 CharacterView(mood: mood, large: true)
                     .frame(width: face.width, height: face.height)
+            }
+
+            if showLimits, !usage.limits.isEmpty, store.approvals.isEmpty {
+                LimitRings(limits: usage.limits, now: store.now)
             }
 
             if let approval = store.approvals.first {

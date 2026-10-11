@@ -2,7 +2,7 @@
 
 A macOS notch companion that shows what your AI coding agents are doing. The notch itself has eyes: they scan while agents work, widen when one needs your approval, cross out on errors and squint happily when a task finishes.
 
-Works with Claude Code, Codex, Gemini CLI, Copilot CLI, Droid, OpenCode, Pi, Kiro CLI, Cursor (app and `cursor-agent`), Windsurf and Antigravity (app and `agy`), including the Claude Code and Codex extensions inside VS Code, Cursor and other editors.
+Works with Claude Code, Codex, Gemini CLI, Copilot CLI, Droid, OpenCode, Pi, Kiro CLI, Qoder CLI, Augment (`auggie`), Goose, Cursor (app and `cursor-agent`), Windsurf and Antigravity (app and `agy`), including the Claude Code and Codex extensions inside VS Code, Cursor and other editors.
 
 ## Build and run
 
@@ -38,6 +38,9 @@ When connecting, Pip copies its `pip-bridge` helper to `~/Library/Application Su
 | OpenCode | `~/.config/opencode/plugins/pip.js` (Pip's own plugin) | Status, tools; "needs you" on permission prompts |
 | Pi | `~/.pi/agent/extensions/pip.ts` (Pip's own extension) | Status, tools, replies |
 | Kiro CLI | `~/.kiro/hooks/pip.json` (Pip's own file, Kiro CLI 3+) | Status, tools, replies |
+| Qoder CLI | `~/.qoder/settings.json` | Status, tools, approvals from the notch |
+| Augment | `~/.augment/settings.json` | Status, tools and replies for `auggie` |
+| Goose | `~/.agents/plugins/pip/` (Pip's own plugin) | Status, tools and replies |
 | Cursor | `~/.cursor/hooks.json` | Status, tools and replies for the app and `cursor-agent`. Approvals stay in Cursor. |
 | Windsurf | `~/.codeium/windsurf/hooks.json` | Status, commands, edits and replies from Cascade |
 | Antigravity | `~/.gemini/config/hooks.json` | Status and tools for the app and the `agy` CLI. Approvals stay in Antigravity. |
@@ -47,6 +50,17 @@ Not supported yet: Zed's own agent has no hooks, and Zed doesn't run Claude Code
 The Claude Code and Codex editor extensions use the same hooks as their CLIs. Each session row shows where it runs ("Claude Code · VS Code", "Codex · Ghostty"), and clicking it opens that project's editor window.
 
 Only Claude Code's and Codex's `PermissionRequest` hooks wait for you, because only they fire exactly when the agent would otherwise ask you. Everything else runs in the background. If Pip isn't running, the bridge exits at once with the agent's neutral answer, so agents behave as if no hook were installed.
+
+**Any other agent** with Claude-style hooks works too: point its hooks at `"~/Library/Application Support/Pip/bin/pip-bridge" my-agent` (Settings → Agents → Other Agents has a Copy button). It shows up in the notch as "My-agent". Pip also accepts common field spellings such as `sessionId`, `working_dir` and `toolName`.
+
+## Usage limits
+
+The notch shows plan limits as rings (green, then amber from 60%, red from 85%) with the time until each resets:
+
+- **Claude Code**: the 5-hour and weekly limits (and a spend limit behind a gateway). Claude Code only shares these with its status line, so Pip installs `pip-bridge claude-statusline` as the status line. If you already had one, Pip runs it unchanged and restores it when you turn this off; otherwise Claude Code shows a compact line such as `Opus 5.5 · 34% context · 5h 62% · week 88%`.
+- **Codex**: the 5-hour and weekly limits, read from its local session logs in `~/.codex/sessions`.
+
+Other agents don't expose their limits locally. Settings → General → Usage Limits turns the rings and the Claude status line on or off.
 
 ## Characters and sounds
 

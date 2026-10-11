@@ -1,7 +1,7 @@
 import Foundation
 
 enum AgentKind: String, CaseIterable {
-    case claude, codex, gemini, copilot, droid, opencode, pi, kiro, cursor, windsurf, antigravity, unknown
+    case claude, codex, gemini, copilot, droid, opencode, pi, kiro, qoder, augment, goose, cursor, windsurf, antigravity, unknown
 
     init(raw: String) { self = AgentKind(rawValue: raw) ?? .unknown }
 
@@ -15,6 +15,9 @@ enum AgentKind: String, CaseIterable {
         case .opencode: "OpenCode"
         case .pi: "Pi"
         case .kiro: "Kiro CLI"
+        case .qoder: "Qoder CLI"
+        case .augment: "Augment"
+        case .goose: "Goose"
         case .cursor: "Cursor"
         case .windsurf: "Windsurf"
         case .antigravity: "Antigravity"
@@ -44,6 +47,8 @@ struct AgentSession: Identifiable, Equatable {
     var cwd: String
     var pid: pid_t?
     var env: [String: String]
+    /// For agents Pip doesn't know, the name their hook passed to pip-bridge.
+    var customName: String?
     /// The app the agent runs in, e.g. "VS Code" for the Claude Code extension, "Ghostty" for a CLI.
     var host: String?
     /// Current git branch of `cwd`, if it's a repository.
@@ -57,6 +62,12 @@ struct AgentSession: Identifiable, Equatable {
     var turnStartedAt: Date?
     var lastDuration: TimeInterval?
     var updatedAt: Date
+
+    /// "Claude Code", or a custom agent's own name.
+    var agentName: String {
+        guard agent == .unknown, let customName, !customName.isEmpty else { return agent.displayName }
+        return customName.prefix(1).uppercased() + customName.dropFirst()
+    }
 
     var projectName: String {
         let name = URL(fileURLWithPath: cwd).lastPathComponent
@@ -88,6 +99,8 @@ struct PendingApproval: Identifiable, Equatable {
     let detail: String
     let receivedAt: Date
     var kind: Kind = .tool
+    /// Display name, which differs from `agent.displayName` for custom agents.
+    var agentName: String?
 }
 
 enum ApprovalDecision: Equatable {

@@ -9,7 +9,9 @@ private let paneWidth: CGFloat = 540
 
 struct GeneralSettings: View {
     @ObservedObject var model: IntegrationsModel
+    @ObservedObject var usage: UsageStore
     let runDemo: () -> Void
+    @AppStorage(UsageStore.visibleKey) private var showLimits = true
     @State private var openAtLogin = SMAppService.mainApp.status == .enabled
     @State private var loginError: String?
 
@@ -37,6 +39,24 @@ struct GeneralSettings: View {
                 if let loginError {
                     Text(loginError).foregroundStyle(.red)
                 }
+            }
+
+            Section {
+                Toggle("Show usage limits in the notch", isOn: $showLimits)
+                Toggle("Read Claude Code limits", isOn: Binding(get: { model.claudeLimits }, set: { model.claudeLimits = $0 }))
+                ForEach(usage.limits) { limit in
+                    LabeledContent("\(limit.provider.displayName), \(limit.window == .fiveHour ? "5-hour" : limit.window == .weekly ? "weekly" : "spend") limit") {
+                        Text("\(Int(limit.usedPercent.rounded()))% used")
+                            .foregroundStyle(limit.usedPercent >= 85 ? .red : .secondary)
+                            .monospacedDigit()
+                    }
+                }
+            } header: {
+                Text("Usage Limits")
+            } footer: {
+                Text(usage.limits.isEmpty
+                     ? "Limits appear after Claude Code or Codex makes its next request. Claude's come from its status line (yours keeps working); Codex's from its local session logs."
+                     : "Claude's limits come from its status line (yours keeps working); Codex's from its local session logs.")
             }
 
             Section("About") {
@@ -76,6 +96,11 @@ struct GeneralSettings: View {
 
 struct AgentSettings: View {
     @ObservedObject var model: IntegrationsModel
+    @State private var copied = false
+
+    private var customCommand: String {
+        "\"\(model.bridgePath ?? "~/Library/Application Support/Pip/bin/pip-bridge")\" my-agent"
+    }
 
     private var available: [AgentIntegration] {
         model.integrations.filter { $0.isDetected || model.connected.contains($0.agent) }
@@ -117,6 +142,28 @@ struct AgentSettings: View {
                 }
             }
 
+            Section {
+                LabeledContent("Hook command") {
+                    HStack {
+                        Text(customCommand)
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.head)
+                            .textSelection(.enabled)
+                        Button(copied ? "Copied" : "Copy") {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(customCommand, forType: .string)
+                            copied = true
+                        }
+                    }
+                }
+            } header: {
+                Text("Other Agents")
+            } footer: {
+                Text("Using an agent that isn't listed? If it has Claude-style hooks, point them at this command and replace \"my-agent\" with its name. It shows up in the notch under that name.")
+            }
+
             if let error = model.lastError {
                 Section {
                     Label(error, systemImage: "exclamationmark.triangle.fill")
@@ -125,7 +172,7 @@ struct AgentSettings: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: paneWidth, height: 560)
+        .frame(width: paneWidth, height: 600)
     }
 }
 
@@ -163,6 +210,8 @@ struct AgentIcon: View {
         .antigravity: ["/Applications/Antigravity.app"],
         .kiro: ["/Applications/Kiro.app"],
         .copilot: ["/Applications/Visual Studio Code.app"],
+        .qoder: ["/Applications/Qoder.app"],
+        .goose: ["/Applications/Goose.app"],
     ]
 
     var body: some View {

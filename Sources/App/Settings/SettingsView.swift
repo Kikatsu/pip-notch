@@ -39,10 +39,12 @@ enum SettingsPane: String, CaseIterable, Identifiable {
 final class SettingsWindowController: NSObject, NSWindowDelegate {
     private var window: NSWindow?
     private let integrations: IntegrationsModel
+    private let usage: UsageStore
     private let runDemo: () -> Void
 
-    init(integrations: IntegrationsModel, runDemo: @escaping () -> Void) {
+    init(integrations: IntegrationsModel, usage: UsageStore, runDemo: @escaping () -> Void) {
         self.integrations = integrations
+        self.usage = usage
         self.runDemo = runDemo
     }
 
@@ -87,7 +89,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
     private func content(for pane: SettingsPane) -> AnyView {
         switch pane {
-        case .general: AnyView(GeneralSettings(model: integrations, runDemo: runDemo))
+        case .general: AnyView(GeneralSettings(model: integrations, usage: usage, runDemo: runDemo))
         case .agents: AnyView(AgentSettings(model: integrations))
         case .appearance: AnyView(AppearanceSettings())
         case .sounds: AnyView(SoundSettings())

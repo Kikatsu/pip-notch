@@ -19,7 +19,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     )
     private let server = SocketServer()
     private let integrations = IntegrationsModel()
-    private lazy var settings = SettingsWindowController(integrations: integrations) { [weak self] in
+    private let usage = UsageStore()
+    private lazy var settings = SettingsWindowController(integrations: integrations, usage: usage) { [weak self] in
         self.map { DemoScript.run(on: $0.store) }
     }
     private var notch: NotchWindowController?
@@ -63,7 +64,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             runDemo: { [weak self] in self.map { DemoScript.run(on: $0.store) } },
             quit: { NSApp.terminate(nil) }
         )
-        let notch = NotchWindowController(store: store, actions: actions)
+        let notch = NotchWindowController(store: store, usage: usage, actions: actions)
         self.notch = notch
         store.onAttention = { [weak self] attention, session in
             self?.attention(attention, session: session)
@@ -83,6 +84,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             MainActor.assumeIsolated { self?.integrations.connectDetected() }
         }
         RunLoop.main.add(reconnect, forMode: .common)
+
+        UserDefaults.standard.register(defaults: [UsageStore.visibleKey: true])
+        usage.refreshCodex()
+        let usageTimer = Timer(timeInterval: 60, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.usage.refreshCodex()
+                self?.usage.tick()
+            }
+        }
+        RunLoop.main.add(usageTimer, forMode: .common)
 
         if CommandLine.arguments.contains("--demo") {
             DemoScript.run(on: store)
@@ -105,6 +116,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // MARK: Events
 
     private func receive(_ envelope: HookEnvelope, _ connection: BridgeConnection?) {
+        // Claude Code's status line only carries plan limits; it isn't a session event.
+        if envelope.eventName == "StatusLine" {
+            if let limits = envelope.payload["rate_limits"] as? [String: Any] { usage.updateClaude(limits) }
+            connection?.finish(nil)
+            return
+        }
+        if envelope.agent == .codex, envelope.eventName == "Stop" { usage.refreshCodex() }
         Log.events.info("\(envelope.agent.rawValue, privacy: .public) \(envelope.eventName, privacy: .public) session=\(envelope.sessionID, privacy: .public)")
         guard let connection else {
             store.handle(envelope)

@@ -13,7 +13,7 @@ struct ApprovalCard: View {
             HStack(spacing: 7) {
                 Circle().fill(Palette.amber).frame(width: 7, height: 7)
                 AgentBadge(agent: approval.agent)
-                Text("\(approval.agent.displayName) · \(approval.projectName)")
+                Text("\(approval.agentName ?? approval.agent.displayName) · \(approval.projectName)")
                     .lineLimit(1)
                 Spacer(minLength: 8)
                 if total > 1 { Text("\(position) of \(total)") }

@@ -92,10 +92,10 @@ struct SessionRow: View {
 
     /// "Claude Code", or "Claude Code · VS Code" when it runs inside an editor or a named terminal.
     private var subtitle: String {
-        guard let host = session.host, host != session.agent.displayName, !session.agent.isIDE else {
-            return session.agent.displayName
+        guard let host = session.host, host != session.agentName, !session.agent.isIDE else {
+            return session.agentName
         }
-        return "\(session.agent.displayName) · \(host)"
+        return "\(session.agentName) · \(host)"
     }
 
     private var statusLine: String {

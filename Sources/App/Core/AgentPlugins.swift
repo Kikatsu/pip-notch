@@ -165,4 +165,26 @@ enum AgentPlugins {
         let data = (try? JSONSerialization.data(withJSONObject: config, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])) ?? Data()
         return String(data: data, encoding: .utf8) ?? "{}"
     }
+
+    /// ~/.agents/plugins/pip/hooks/hooks.json for Goose.
+    static func goose(bridgePath: String) -> String {
+        var hooks: [String: Any] = [:]
+        for event in ["SessionStart", "SessionEnd", "UserPromptSubmit", "PreToolUse", "PostToolUse", "Stop"] {
+            hooks[event] = [["hooks": [["type": "command", "command": HookConfig.command(bridgePath: bridgePath, agent: .goose), "timeout": 5]]]]
+        }
+        let data = (try? JSONSerialization.data(withJSONObject: ["hooks": hooks], options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])) ?? Data()
+        return String(data: data, encoding: .utf8) ?? "{}"
+    }
+
+    /// ~/.agents/plugins/pip/plugin.json for Goose.
+    static func gooseManifest(bridgePath: String) -> String {
+        """
+        {
+          "name": "pip",
+          "version": "1.0.0",
+          "description": "\(header("Goose"))"
+        }
+
+        """
+    }
 }

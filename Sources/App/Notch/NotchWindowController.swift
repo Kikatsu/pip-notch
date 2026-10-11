@@ -4,7 +4,7 @@ import SwiftUI
 /// Owns the notch panel: places it on the notched screen, tracks the pointer, opens and closes it.
 @MainActor
 final class NotchWindowController {
-    private static let windowSize = CGSize(width: 760, height: 480)
+    private static let windowSize = CGSize(width: 760, height: 600)
     private static let hoverOpenDelay: TimeInterval = 0.12
     private static let hoverCloseDelay: TimeInterval = 0.6
     /// After a click inside the notch, stay open this long even if the pointer drifts out.
@@ -23,14 +23,14 @@ final class NotchWindowController {
     private var holdOpenUntil = Date.distantPast
     private var clickMonitor: Any?
 
-    init(store: SessionStore, actions: NotchActions) {
+    init(store: SessionStore, usage: UsageStore, actions: NotchActions) {
         self.store = store
         let screen = NotchGeometry.preferredScreen()
         geometry = screen.map(NotchGeometry.init)
         viewModel = NotchViewModel(notchSize: geometry?.notchSize ?? CGSize(width: 180, height: 32))
         panel = NotchPanel(contentRect: CGRect(origin: .zero, size: Self.windowSize))
 
-        let root = NotchRootView(viewModel: viewModel, store: store, actions: actions)
+        let root = NotchRootView(viewModel: viewModel, store: store, usage: usage, actions: actions)
         let host = FirstMouseHostingView(rootView: root)
         host.frame = CGRect(origin: .zero, size: Self.windowSize)
         panel.contentView = host

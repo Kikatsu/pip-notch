@@ -3,6 +3,8 @@ import Foundation
 /// One hook event as forwarded by pip-bridge.
 struct HookEnvelope {
     let agent: AgentKind
+    /// The agent name exactly as the hook passed it (kept for agents Pip doesn't know).
+    var rawAgent: String?
     let pid: pid_t?
     let env: [String: String]
     let payload: [String: Any]
@@ -34,12 +36,14 @@ struct HookEnvelope {
               let payload = object["payload"] as? [String: Any]
         else { return nil }
         let pid = (object["pid"] as? Int).map { pid_t($0) }
+        let raw = object["agent"] as? String ?? ""
         self.init(
-            agent: AgentKind(raw: object["agent"] as? String ?? ""),
+            agent: AgentKind(raw: raw),
             pid: pid.flatMap { $0 > 1 ? $0 : nil },
             env: object["env"] as? [String: String] ?? [:],
             payload: payload,
             fallbackCwd: object["cwd"] as? String
         )
+        rawAgent = raw
     }
 }

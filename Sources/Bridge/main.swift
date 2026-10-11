@@ -12,6 +12,7 @@ import Foundation
 let arguments = Array(CommandLine.arguments.dropFirst())
 let agent = arguments.first ?? "claude"
 let input = FileHandle.standardInput.readDataToEndOfFile()
+if agent == "claude-statusline" { runClaudeStatusLine(input: input) }
 var payload = (try? JSONSerialization.jsonObject(with: input)) as? [String: Any]
 if arguments.count > 1, payload?["hook_event_name"] == nil {
     payload?["hook_event_name"] = arguments[1]
@@ -35,7 +36,7 @@ func finish(_ output: String? = nil) -> Never {
 }
 
 guard let payload else { finish() }
-let blocking = BridgeWire.blockingEvents.contains(eventName) && (agent == "claude" || agent == "codex")
+let blocking = BridgeWire.blockingEvents.contains(eventName) && ["claude", "codex", "qoder"].contains(agent)
 
 let forwardedEnv = [
     "TERM_PROGRAM", "TERM_SESSION_ID", "ITERM_SESSION_ID", "TMUX", "TMUX_PANE",

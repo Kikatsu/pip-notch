@@ -31,6 +31,8 @@ struct AgentIntegration: Identifiable {
     let detectPaths: [String]
     /// Shown under the connect button when the agent needs a manual step.
     let note: String?
+    /// More files Pip owns alongside `configURL` (e.g. a plugin manifest), written and removed with it.
+    var extraFiles: [(url: URL, contents: (String) -> String)] = []
 
     var id: String { agent.rawValue }
 
@@ -55,6 +57,10 @@ struct AgentIntegration: Identifiable {
     }
 
     func install(bridgePath: String) throws {
+        for extra in extraFiles {
+            try FileManager.default.createDirectory(at: extra.url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try Data(extra.contents(bridgePath).utf8).write(to: extra.url, options: .atomic)
+        }
         if case .ownedFile(let contents) = format {
             try FileManager.default.createDirectory(at: configURL.deletingLastPathComponent(), withIntermediateDirectories: true)
             try Data(contents(bridgePath).utf8).write(to: configURL, options: .atomic)
@@ -68,6 +74,7 @@ struct AgentIntegration: Identifiable {
         if case .ownedFile = format {
             guard isInstalled() else { return }
             try FileManager.default.removeItem(at: configURL)
+            for extra in extraFiles { try? FileManager.default.removeItem(at: extra.url) }
             return
         }
         let file = HookFile(url: configURL)
@@ -155,6 +162,38 @@ struct AgentIntegration: Identifiable {
                 format: .ownedFile(AgentPlugins.kiro(bridgePath:)),
                 detectPaths: [at(".kiro").path, at(".local/bin/kiro-cli").path, "/opt/homebrew/bin/kiro-cli"],
                 note: "Status and replies. Needs Kiro CLI 3 or later."
+            ),
+            AgentIntegration(
+                agent: .qoder,
+                configURL: at(".qoder/settings.json"),
+                format: .claudeStyle([
+                    ("SessionStart", .async), ("SessionEnd", .async), ("UserPromptSubmit", .async),
+                    ("PreToolUse", .async), ("PostToolUse", .async), ("PostToolUseFailure", .async),
+                    ("PermissionRequest", .blocking(timeout: 600)), ("Notification", .async),
+                    ("Stop", .async), ("StopFailure", .async),
+                ]),
+                detectPaths: [at(".qoder").path, "/Applications/Qoder.app"],
+                note: "Approvals in the notch."
+            ),
+            AgentIntegration(
+                agent: .augment,
+                configURL: at(".augment/settings.json"),
+                // Augment runs hooks inline and counts timeouts in milliseconds.
+                format: .claudeStyle([
+                    ("SessionStart", .sync(timeout: 5000)), ("SessionEnd", .sync(timeout: 5000)),
+                    ("PreToolUse", .sync(timeout: 5000)), ("PostToolUse", .sync(timeout: 5000)),
+                    ("Stop", .sync(timeout: 5000)),
+                ]),
+                detectPaths: [at(".augment").path],
+                note: "Status and replies for the auggie CLI."
+            ),
+            AgentIntegration(
+                agent: .goose,
+                configURL: at(".agents/plugins/pip/hooks/hooks.json"),
+                format: .ownedFile(AgentPlugins.goose(bridgePath:)),
+                detectPaths: [at(".config/goose").path, "/Applications/Goose.app"],
+                note: "Status and replies. Installs a small Pip plugin.",
+                extraFiles: [(at(".agents/plugins/pip/plugin.json"), AgentPlugins.gooseManifest(bridgePath:))]
             ),
             AgentIntegration(
                 agent: .cursor,

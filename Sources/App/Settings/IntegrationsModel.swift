@@ -6,6 +6,8 @@ final class IntegrationsModel: ObservableObject {
     static let autoConnectKey = "agents.autoConnect"
     /// Agents the user disconnected by hand; auto-connect leaves them alone.
     static let optedOutKey = "agents.optedOut"
+    /// Read Claude Code's plan limits by wrapping its status line.
+    static let claudeLimitsKey = "limits.claude"
 
     let integrations: [AgentIntegration]
     @Published private(set) var connected: Set<AgentKind> = []
@@ -19,7 +21,7 @@ final class IntegrationsModel: ObservableObject {
     init(integrations: [AgentIntegration] = AgentIntegration.all, defaults: UserDefaults = .standard) {
         self.integrations = integrations
         self.defaults = defaults
-        defaults.register(defaults: [Self.autoConnectKey: true])
+        defaults.register(defaults: [Self.autoConnectKey: true, Self.claudeLimitsKey: true])
     }
 
     var anyConnected: Bool { !connected.isEmpty }
@@ -30,6 +32,35 @@ final class IntegrationsModel: ObservableObject {
             objectWillChange.send()
             defaults.set(newValue, forKey: Self.autoConnectKey)
             if newValue { connectDetected() }
+        }
+    }
+
+    var claudeLimits: Bool {
+        get { defaults.bool(forKey: Self.claudeLimitsKey) }
+        set {
+            objectWillChange.send()
+            defaults.set(newValue, forKey: Self.claudeLimitsKey)
+            syncClaudeStatusLine()
+        }
+    }
+
+    private var claudeIntegration: AgentIntegration? { integrations.first { $0.agent == .claude } }
+
+    /// Keeps Pip's status line installed exactly while Claude Code is connected and limits are on.
+    func syncClaudeStatusLine() {
+        guard let claude = claudeIntegration else { return }
+        let wanted = claudeLimits && connected.contains(.claude)
+        do {
+            if wanted, let bridgePath {
+                if !ClaudeStatusLine.isInstalled(settingsURL: claude.configURL, bridgePath: bridgePath) {
+                    try ClaudeStatusLine.install(settingsURL: claude.configURL, bridgePath: bridgePath)
+                    Log.ui.notice("Installed Claude status line for limits")
+                }
+            } else {
+                try ClaudeStatusLine.uninstall(settingsURL: claude.configURL)
+            }
+        } catch {
+            lastError = error.localizedDescription
         }
     }
 
@@ -65,6 +96,7 @@ final class IntegrationsModel: ObservableObject {
             lastError = error.localizedDescription
         }
         refresh()
+        if integration.agent == .claude { syncClaudeStatusLine() }
     }
 
     /// Connects every agent found on this Mac that the user hasn't opted out of, and repairs
@@ -88,5 +120,6 @@ final class IntegrationsModel: ObservableObject {
             }
         }
         refresh()
+        syncClaudeStatusLine()
     }
 }

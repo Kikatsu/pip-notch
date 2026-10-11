@@ -7,7 +7,12 @@ import Foundation
 enum AgentAdapter {
     static func normalize(_ payload: [String: Any], agent: AgentKind) -> [String: Any] {
         switch agent {
-        case .claude, .codex, .unknown: payload
+        case .claude, .codex: payload
+        // Qoder speaks Claude's format exactly; any agent Pip doesn't know gets best-effort aliasing.
+        case .qoder: canonicalizingTool(payload)
+        case .unknown: generic(payload)
+        case .augment: augment(payload)
+        case .goose: goose(payload)
         case .cursor: cursor(payload)
         case .antigravity: antigravity(payload)
         case .gemini: gemini(payload)
@@ -115,6 +120,52 @@ enum AgentAdapter {
         default:
             out["hook_event_name"] = "AgentActive"
         }
+        return canonicalizingTool(out)
+    }
+
+    // MARK: Any other agent
+
+    /// Accepts Claude-style payloads plus common spellings other agents use for the same fields.
+    static func generic(_ p: [String: Any]) -> [String: Any] {
+        var out = p
+        func alias(_ key: String, _ alternatives: [String]) {
+            guard out[key] == nil else { return }
+            if let value = alternatives.lazy.compactMap({ p[$0] }).first { out[key] = value }
+        }
+        alias("hook_event_name", ["hookEventName", "event", "eventName", "type"])
+        alias("session_id", ["sessionId", "conversation_id", "conversationId", "thread_id", "threadId"])
+        alias("cwd", ["working_dir", "workingDir", "workspace", "project_dir"])
+        alias("prompt", ["message", "user_prompt", "input"])
+        alias("tool_name", ["toolName", "tool"])
+        alias("tool_input", ["toolInput", "toolArgs", "arguments", "args"])
+        alias("last_assistant_message", ["response", "assistant_response", "lastAssistantMessage"])
+        if out["cwd"] == nil, let roots = (p["workspace_roots"] ?? p["workspaceRoots"]) as? [String], let first = roots.first {
+            out["cwd"] = path(first)
+        }
+        return canonicalizingTool(out)
+    }
+
+    // MARK: Augment (~/.augment/settings.json)
+
+    static func augment(_ p: [String: Any]) -> [String: Any] {
+        var out = p
+        out["session_id"] = p["conversation_id"] ?? p["session_id"]
+        if let root = (p["workspace_roots"] as? [String])?.first { out["cwd"] = path(root) }
+        if p["hook_event_name"] as? String == "Stop", let cause = p["agent_stop_cause"] as? String, cause == "error" {
+            out["hook_event_name"] = "StopFailure"
+            out["error"] = "error"
+            out["error_details"] = "Augment stopped with an error"
+        }
+        return canonicalizingTool(out)
+    }
+
+    // MARK: Goose (~/.agents/plugins/pip)
+
+    static func goose(_ p: [String: Any]) -> [String: Any] {
+        var out = p
+        out["hook_event_name"] = p["hook_event_name"] ?? p["event"]
+        out["cwd"] = p["cwd"] ?? p["working_dir"]
+        if out["prompt"] == nil { out["prompt"] = p["message"] }
         return canonicalizingTool(out)
     }
 

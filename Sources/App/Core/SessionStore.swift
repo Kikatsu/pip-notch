@@ -86,6 +86,7 @@ final class SessionStore: ObservableObject {
             env: event.env, host: hostName(event), stateChangedAt: time, updatedAt: time
         )
         if !event.cwd.isEmpty { session.cwd = event.cwd }
+        if event.agent == .unknown { session.customName = event.rawAgent }
         // Branches change between turns; re-read only at turn boundaries, not on every tool call.
         if isNew || ["SessionStart", "UserPromptSubmit", "Stop"].contains(event.eventName) {
             session.branch = session.cwd.isEmpty ? nil : gitBranch(session.cwd)
@@ -208,6 +209,7 @@ final class SessionStore: ObservableObject {
             id: UUID(), sessionID: session.id, agent: session.agent, projectName: session.projectName,
             toolName: tool, title: summary.title, detail: summary.detail, receivedAt: time
         )
+        approval.agentName = session.agentName
         switch tool {
         case "ExitPlanMode":
             approval = PendingApproval(
