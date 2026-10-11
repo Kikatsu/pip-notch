@@ -1,0 +1,69 @@
+name: Pip
+options:
+  bundleIdPrefix: com.kikatsu
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ""
+    ENABLE_HARDENED_RUNTIME: YES
+targets:
+  Pip:
+    type: application
+    platform: macOS
+    sources:
+      - Sources/App
+      - Sources/Shared
+    info:
+      path: Sources/App/Info.plist
+      properties:
+        CFBundleDisplayName: Pip
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        LSMinimumSystemVersion: "14.0"
+        LSUIElement: true
+        NSAppleEventsUsageDescription: Pip brings the terminal running your agent to the front.
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.kikatsu.pip
+        ENABLE_APP_SANDBOX: NO
+    dependencies:
+      - target: pip-bridge
+        embed: true
+        copy:
+          destination: executables
+  pip-bridge:
+    type: tool
+    platform: macOS
+    sources:
+      - Sources/Bridge
+      - Sources/Shared
+    settings:
+      base:
+        PRODUCT_NAME: pip-bridge
+        PRODUCT_BUNDLE_IDENTIFIER: com.kikatsu.pip.bridge
+  PipTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - Tests/PipTests
+    dependencies:
+      - target: Pip
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.kikatsu.pip.tests
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  Pip:
+    build:
+      targets:
+        Pip: all
+        pip-bridge: all
+    test:
+      targets:
+        - PipTests

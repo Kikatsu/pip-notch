@@ -1,0 +1,117 @@
+import AppKit
+import SwiftUI
+
+/// Owns the notch panel: places it on the notched screen, tracks the pointer, opens and closes it.
+@MainActor
+final class NotchWindowController {
+    private static let windowSize = CGSize(width: 760, height: 480)
+    private static let hoverOpenDelay: TimeInterval = 0.12
+    private static let hoverCloseDelay: TimeInterval = 0.6
+
+    let viewModel: NotchViewModel
+    private let store: SessionStore
+    private let panel: NotchPanel
+    private var geometry: NotchGeometry?
+    private var pointerTimer: Timer?
+    private var tickTimer: Timer?
+    private var insideSince: Date?
+    private var outsideSince: Date?
+
+    init(store: SessionStore, actions: NotchActions) {
+        self.store = store
+        let screen = NotchGeometry.preferredScreen()
+        geometry = screen.map(NotchGeometry.init)
+        viewModel = NotchViewModel(notchSize: geometry?.notchSize ?? CGSize(width: 180, height: 32))
+        panel = NotchPanel(contentRect: CGRect(origin: .zero, size: Self.windowSize))
+
+        let root = NotchRootView(viewModel: viewModel, store: store, actions: actions)
+        let host = FirstMouseHostingView(rootView: root)
+        host.frame = CGRect(origin: .zero, size: Self.windowSize)
+        panel.contentView = host
+
+        store.onAttention = { [weak self] attention in self?.attention(attention) }
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.placeOnScreen() }
+        }
+    }
+
+    func show() {
+        placeOnScreen()
+        panel.orderFrontRegardless()
+
+        pointerTimer = Timer(timeInterval: 0.05, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.trackPointer() }
+        }
+        tickTimer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.store.tick()
+                self.viewModel.updateExpansion(store: self.store)
+            }
+        }
+        for timer in [pointerTimer, tickTimer].compactMap({ $0 }) {
+            RunLoop.main.add(timer, forMode: .common)
+        }
+    }
+
+    private func placeOnScreen() {
+        guard let screen = NotchGeometry.preferredScreen() else { return }
+        let geometry = NotchGeometry(screen: screen)
+        self.geometry = geometry
+        viewModel.notchSize = geometry.notchSize
+        let size = Self.windowSize
+        let origin = CGPoint(x: screen.frame.midX - size.width / 2, y: screen.frame.maxY - size.height)
+        panel.setFrame(CGRect(origin: origin, size: size), display: true)
+    }
+
+    private func attention(_ attention: SessionStore.Attention) {
+        switch attention {
+        case .approval:
+            viewModel.approvalsDismissed = false
+        case .finished:
+            viewModel.finishedPinnedUntil = Date().addingTimeInterval(SessionStore.finishedDisplay)
+        }
+        viewModel.updateExpansion(store: store)
+    }
+
+    /// The pointer is polled rather than tracked with events because the panel ignores
+    /// mouse events whenever the pointer is outside the black shape, so clicks pass through.
+    private func trackPointer() {
+        let now = Date()
+        let pointer = NSEvent.mouseLocation
+        let inside = interactiveRect().contains(pointer)
+        panel.ignoresMouseEvents = !inside
+
+        if inside {
+            outsideSince = nil
+            let since = insideSince ?? now
+            insideSince = since
+            if !viewModel.isHovering, now.timeIntervalSince(since) >= Self.hoverOpenDelay {
+                viewModel.isHovering = true
+            }
+        } else {
+            insideSince = nil
+            if viewModel.isHovering {
+                let since = outsideSince ?? now
+                outsideSince = since
+                if now.timeIntervalSince(since) >= Self.hoverCloseDelay {
+                    viewModel.isHovering = false
+                    outsideSince = nil
+                }
+            }
+        }
+        viewModel.updateExpansion(store: store, now: now)
+    }
+
+    private func interactiveRect() -> CGRect {
+        let frame = panel.frame
+        let shape = viewModel.shapeFrame
+        var rect = CGRect(x: frame.minX + shape.minX, y: frame.maxY - shape.maxY, width: shape.width, height: shape.height)
+        if let notch = geometry?.notchRect {
+            rect = rect.isEmpty ? notch : rect.union(notch)
+        }
+        return rect.insetBy(dx: -4, dy: -4)
+    }
+}
