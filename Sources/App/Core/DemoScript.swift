@@ -1,9 +1,10 @@
 import Foundation
 
-/// Plays two fake sessions through every mood, so the notch can be previewed without real agents.
+/// Plays fake sessions through every mood, so the notch can be previewed without real agents.
 @MainActor
 enum DemoScript {
     static func run(on store: SessionStore) {
+        playEditorSessions(on: store)
         let api = "demo-api", web = "demo-web"
         let steps: [(TimeInterval, String, [String: Any])] = [
             (0.0, api, ["hook_event_name": "SessionStart", "cwd": "/Users/demo/api-server"]),
@@ -27,13 +28,42 @@ enum DemoScript {
                 if payload["cwd"] == nil {
                     payload["cwd"] = session == api ? "/Users/demo/api-server" : "/Users/demo/web-app"
                 }
-                let event = HookEnvelope(agent: .claude, pid: nil, payload: payload)
+                let event = HookEnvelope(agent: session == api ? .claude : .codex, pid: nil, payload: payload)
                 if event.isBlocking {
                     store.handle(event) { decision in NSLog("Pip demo: approval answered \(decision.rawValue)") }
                 } else {
                     store.handle(event)
                 }
             }
+        }
+    }
+
+    /// A Cursor and an Antigravity session, sent in each editor's own payload format.
+    private static func playEditorSessions(on store: SessionStore) {
+        let steps: [(TimeInterval, AgentKind, [String: Any])] = [
+            (0.8, .cursor, ["hook_event_name": "beforeSubmitPrompt", "conversation_id": "demo-cursor",
+                            "workspace_roots": ["/Users/demo/mobile-app"], "prompt": "Fix the login screen layout"]),
+            (1.6, .cursor, ["hook_event_name": "afterFileEdit", "conversation_id": "demo-cursor",
+                            "workspace_roots": ["/Users/demo/mobile-app"], "file_path": "/Users/demo/mobile-app/Login.swift"]),
+            (1.4, .antigravity, ["hook_event_name": "PreInvocation", "conversationId": "demo-agy",
+                                 "workspacePaths": ["/Users/demo/data-pipeline"]]),
+            (2.2, .antigravity, ["hook_event_name": "PostToolUse", "conversationId": "demo-agy",
+                                 "workspacePaths": ["/Users/demo/data-pipeline"],
+                                 "toolCall": ["name": "run_command", "args": ["CommandLine": "pytest -q"]]]),
+            (14.0, .cursor, ["hook_event_name": "afterAgentResponse", "conversation_id": "demo-cursor",
+                             "text": "Login screen now centers on small iPhones."]),
+            (14.2, .cursor, ["hook_event_name": "stop", "conversation_id": "demo-cursor", "status": "completed"]),
+            (18.0, .antigravity, ["hook_event_name": "Stop", "conversationId": "demo-agy", "fullyIdle": true]),
+            (35.0, .cursor, ["hook_event_name": "sessionEnd", "conversation_id": "demo-cursor"]),
+            (35.0, .antigravity, ["hook_event_name": "Stop", "conversationId": "demo-agy"]),
+        ]
+        for (delay, agent, payload) in steps {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                store.handle(HookEnvelope(agent: agent, pid: nil, payload: payload))
+            }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 36) {
+            store.handle(HookEnvelope(agent: .claude, pid: nil, payload: ["hook_event_name": "SessionEnd", "session_id": "demo-agy"]))
         }
     }
 }

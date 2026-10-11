@@ -32,6 +32,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.kikatsu.pip
         ENABLE_APP_SANDBOX: NO
+        CODE_SIGN_ENTITLEMENTS: Sources/App/Pip.entitlements
     dependencies:
       - target: pip-bridge
         embed: true

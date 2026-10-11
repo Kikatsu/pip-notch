@@ -7,6 +7,8 @@ final class NotchWindowController {
     private static let windowSize = CGSize(width: 760, height: 480)
     private static let hoverOpenDelay: TimeInterval = 0.12
     private static let hoverCloseDelay: TimeInterval = 0.6
+    /// After a click inside the notch, stay open this long even if the pointer drifts out.
+    private static let clickHold: TimeInterval = 1.5
 
     let viewModel: NotchViewModel
     private let store: SessionStore
@@ -16,6 +18,10 @@ final class NotchWindowController {
     private var tickTimer: Timer?
     private var insideSince: Date?
     private var outsideSince: Date?
+    /// A menu opened from the notch is showing; its items sit outside the black shape.
+    private var menuOpen = false
+    private var holdOpenUntil = Date.distantPast
+    private var clickMonitor: Any?
 
     init(store: SessionStore, actions: NotchActions) {
         self.store = store
@@ -29,11 +35,30 @@ final class NotchWindowController {
         host.frame = CGRect(origin: .zero, size: Self.windowSize)
         panel.contentView = host
 
-        store.onAttention = { [weak self] attention in self?.attention(attention) }
-        NotificationCenter.default.addObserver(
-            forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
-        ) { [weak self] _ in
+        let center = NotificationCenter.default
+        center.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.placeOnScreen() }
+        }
+        center.addObserver(forName: NSMenu.didBeginTrackingNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self, self.viewModel.isExpanded else { return }
+                self.menuOpen = true
+            }
+        }
+        center.addObserver(forName: NSMenu.didEndTrackingNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self, self.menuOpen else { return }
+                self.menuOpen = false
+                self.holdOpenUntil = Date().addingTimeInterval(Self.clickHold)
+            }
+        }
+        clickMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
+            MainActor.assumeIsolated {
+                if let self, event.window === self.panel {
+                    self.holdOpenUntil = Date().addingTimeInterval(Self.clickHold)
+                }
+            }
+            return event
         }
     }
 
@@ -66,13 +91,23 @@ final class NotchWindowController {
         panel.setFrame(CGRect(origin: origin, size: size), display: true)
     }
 
-    private func attention(_ attention: SessionStore.Attention) {
+    func handle(_ attention: SessionStore.Attention) {
         switch attention {
-        case .approval:
+        case .approval, .needsInput:
             viewModel.approvalsDismissed = false
         case .finished:
             viewModel.finishedPinnedUntil = Date().addingTimeInterval(SessionStore.finishedDisplay)
+        case .error, .rateLimited:
+            break
         }
+        viewModel.updateExpansion(store: store)
+    }
+
+    /// Closes the panel right away (e.g. when a settings window opens).
+    func collapse() {
+        menuOpen = false
+        holdOpenUntil = .distantPast
+        viewModel.isHovering = false
         viewModel.updateExpansion(store: store)
     }
 
@@ -83,6 +118,7 @@ final class NotchWindowController {
         let pointer = NSEvent.mouseLocation
         let inside = interactiveRect().contains(pointer)
         panel.ignoresMouseEvents = !inside
+        let held = menuOpen || now < holdOpenUntil
 
         if inside {
             outsideSince = nil
@@ -93,7 +129,7 @@ final class NotchWindowController {
             }
         } else {
             insideSince = nil
-            if viewModel.isHovering {
+            if viewModel.isHovering, !held {
                 let since = outsideSince ?? now
                 outsideSince = since
                 if now.timeIntervalSince(since) >= Self.hoverCloseDelay {

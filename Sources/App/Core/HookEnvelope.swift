@@ -18,7 +18,7 @@ struct HookEnvelope {
         self.agent = agent
         self.pid = pid
         self.env = env
-        self.payload = payload
+        self.payload = AgentAdapter.normalize(payload, agent: agent)
     }
 
     init?(data: Data) {

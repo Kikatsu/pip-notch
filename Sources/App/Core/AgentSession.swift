@@ -1,7 +1,7 @@
 import Foundation
 
-enum AgentKind: String {
-    case claude, codex, unknown
+enum AgentKind: String, CaseIterable {
+    case claude, codex, cursor, antigravity, unknown
 
     init(raw: String) { self = AgentKind(rawValue: raw) ?? .unknown }
 
@@ -9,9 +9,14 @@ enum AgentKind: String {
         switch self {
         case .claude: "Claude Code"
         case .codex: "Codex"
+        case .cursor: "Cursor"
+        case .antigravity: "Antigravity"
         case .unknown: "Agent"
         }
     }
+
+    /// Editor-hosted agents: their process outlives sessions and they send no reliable end event.
+    var isIDE: Bool { self == .cursor || self == .antigravity }
 }
 
 enum SessionState: Equatable {
@@ -76,6 +81,9 @@ enum ToolSummary {
         case "WebFetch": return ("Wants to fetch a page", string("url"))
         case "WebSearch": return ("Wants to search the web", string("query"))
         default:
+            if let first = input.keys.sorted().lazy.compactMap({ input[$0] as? String }).first(where: { !$0.isEmpty }) {
+                return ("Wants to use \(tool)", String(first.prefix(300)))
+            }
             let data = try? JSONSerialization.data(withJSONObject: input, options: [.sortedKeys, .withoutEscapingSlashes])
             let json = data.flatMap { String(data: $0, encoding: .utf8) } ?? ""
             return ("Wants to use \(tool)", String(json.prefix(300)))

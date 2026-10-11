@@ -10,6 +10,8 @@ final class SessionStore: ObservableObject {
     static let errorDisplay: TimeInterval = 60
     /// Sessions with no pid and no events for this long are dropped.
     static let staleAfter: TimeInterval = 3 * 60 * 60
+    /// Editor sessions (Cursor, Antigravity) send no end event; quiet ones are dropped after this.
+    static let ideQuietAfter: TimeInterval = 30 * 60
 
     @Published private(set) var sessions: [String: AgentSession] = [:]
     @Published private(set) var approvals: [PendingApproval] = []
@@ -18,7 +20,7 @@ final class SessionStore: ObservableObject {
     /// Called when a new approval arrives or a turn finishes, so the notch can open itself.
     var onAttention: ((Attention) -> Void)?
 
-    enum Attention { case approval, finished }
+    enum Attention { case approval, needsInput, finished, error, rateLimited }
 
     private var responders: [UUID: (ApprovalDecision) -> Void] = [:]
     private let isProcessAlive: (pid_t) -> Bool
@@ -92,10 +94,25 @@ final class SessionStore: ObservableObject {
             set(.working)
             session.turnStartedAt = time
             session.lastPrompt = event["prompt"].map(Self.firstLine)
+            session.lastMessage = nil
             session.currentTool = nil
             session.errorText = nil
 
+        case "AgentActive":
+            if session.state != .working {
+                session.turnStartedAt = time
+                session.lastMessage = nil
+                session.errorText = nil
+            }
+            set(.working)
+
+        case "AgentMessage":
+            session.lastMessage = event["text"].map(Self.firstLine) ?? session.lastMessage
+
         case "PreToolUse":
+            if session.state != .working, session.turnStartedAt == nil || session.state == .finished {
+                session.turnStartedAt = time
+            }
             set(.working)
             if let tool = event["tool_name"] {
                 session.currentTool = ToolSummary.label(tool: tool, input: event.payload["tool_input"] as? [String: Any] ?? [:])
@@ -112,6 +129,7 @@ final class SessionStore: ObservableObject {
             case "idle_prompt":
                 if session.state != .finished { set(.idle) }
             case "agent_needs_input", "elicitation_dialog", "elicitation_url_dialog":
+                if session.state != .needsInput { onAttention?(.needsInput) }
                 set(.needsInput)
             default:
                 break
@@ -120,16 +138,18 @@ final class SessionStore: ObservableObject {
         case "Stop":
             set(.finished)
             session.currentTool = nil
-            session.lastMessage = event["last_assistant_message"].map(Self.firstLine)
+            session.lastMessage = event["last_assistant_message"].map(Self.firstLine) ?? session.lastMessage
             session.lastDuration = session.turnStartedAt.map { time.timeIntervalSince($0) }
             cancelApprovals(forSession: session.id)
             onAttention?(.finished)
 
         case "StopFailure":
-            set(event["error"] == "rate_limit" ? .rateLimited : .error)
+            let limited = event["error"] == "rate_limit"
+            set(limited ? .rateLimited : .error)
             session.currentTool = nil
             session.errorText = event["error_details"] ?? event["error"]
             cancelApprovals(forSession: session.id)
+            onAttention?(limited ? .rateLimited : .error)
 
         default:
             break
@@ -153,9 +173,12 @@ final class SessionStore: ObservableObject {
     func tick(at time: Date = Date()) {
         now = time
         for (id, session) in sessions {
-            if let pid = session.pid {
-                if !isProcessAlive(pid) { endSession(id) }
-            } else if time.timeIntervalSince(session.updatedAt) > Self.staleAfter {
+            let quiet = time.timeIntervalSince(session.updatedAt)
+            if let pid = session.pid, !isProcessAlive(pid) {
+                endSession(id)
+            } else if session.agent.isIDE, quiet > Self.ideQuietAfter {
+                endSession(id)
+            } else if session.pid == nil, quiet > Self.staleAfter {
                 endSession(id)
             }
         }

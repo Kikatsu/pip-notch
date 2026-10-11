@@ -9,7 +9,8 @@ final class NotchViewModel: ObservableObject {
     @Published var notchSize: CGSize
     @Published private(set) var isExpanded = false
     @Published var isHovering = false
-    @Published var hooksInstalled = false
+    /// At least one agent has Pip's hooks installed.
+    @Published var anyAgentConnected = false
     /// The black shape's frame in the window's top-left coordinate space, reported by the view.
     @Published var shapeFrame: CGRect = .zero
 
@@ -33,7 +34,7 @@ struct NotchActions {
     var resolve: (UUID, ApprovalDecision) -> Void
     var dismissApprovals: () -> Void
     var jump: (AgentSession) -> Void
-    var toggleHooks: () -> Void
+    var openSettings: () -> Void
     var runDemo: () -> Void
     var quit: () -> Void
 }

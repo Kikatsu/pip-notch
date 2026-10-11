@@ -1,29 +1,7 @@
 import SwiftUI
 
-/// The living notch's eyes. Every mood is a pure function of time, so the face never drifts
-/// out of sync and costs nothing while asleep.
-struct FaceView: View {
-    let mood: Mood
-    /// Width of one eye in points; everything else scales from it.
-    let eyeWidth: CGFloat
-    var color: Color = .white
-
-    var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: mood == .asleep)) { context in
-            Canvas { gc, size in
-                EyeRenderer.draw(
-                    mood, time: context.date.timeIntervalSinceReferenceDate,
-                    in: &gc, size: size, eyeWidth: eyeWidth, color: color
-                )
-            }
-        }
-        .accessibilityElement()
-        .accessibilityLabel(Text(Palette.label(for: mood)))
-    }
-}
-
 enum EyeRenderer {
-    static func draw(_ mood: Mood, time t: Double, in gc: inout GraphicsContext, size: CGSize, eyeWidth w: CGFloat, color: Color) {
+    static func draw(_ mood: Mood, time t: Double, in gc: inout GraphicsContext, size: CGSize, eyeWidth w: CGFloat, color: Color, pupil: Color = .black) {
         let h = w * 1.4
         let cx = size.width / 2
         let cy = size.height / 2
@@ -56,7 +34,7 @@ enum EyeRenderer {
             for side in sides {
                 let x = cx + side * spread * 1.1
                 gc.fill(oval(x, cy + bounce, w * 1.15, h * 1.15), with: fill)
-                gc.fill(oval(x, cy + bounce + h * 0.2, w * 0.5, w * 0.5), with: .color(.black))
+                gc.fill(oval(x, cy + bounce + h * 0.2, w * 0.5, w * 0.5), with: .color(pupil))
             }
 
         case .error:

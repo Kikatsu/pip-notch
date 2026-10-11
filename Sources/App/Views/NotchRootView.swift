@@ -5,6 +5,7 @@ struct NotchRootView: View {
     @ObservedObject var viewModel: NotchViewModel
     @ObservedObject var store: SessionStore
     let actions: NotchActions
+    @AppStorage(PipDefaults.character) private var character = CharacterStyle.livingNotch.rawValue
 
     private var spring: Animation { .spring(response: 0.38, dampingFraction: 0.8) }
 
@@ -53,7 +54,7 @@ struct NotchRootView: View {
     private func compactContent(mood: Mood) -> some View {
         let height = viewModel.notchSize.height
         return HStack(spacing: 0) {
-            FaceView(mood: mood, eyeWidth: 6)
+            CharacterView(mood: mood)
                 .frame(width: NotchViewModel.earWidth, height: height)
             Color.clear.frame(width: viewModel.notchSize.width, height: height)
             EarIndicator(mood: mood, workingCount: store.workingCount, sessionCount: store.sessions.count)
@@ -80,8 +81,9 @@ struct NotchRootView: View {
             }
             .frame(height: viewModel.notchSize.height)
 
-            FaceView(mood: mood, eyeWidth: 13)
-                .frame(width: 96, height: 30)
+            let face = CharacterView.largeSize(for: CharacterStyle(rawValue: character) ?? .livingNotch)
+            CharacterView(mood: mood, large: true)
+                .frame(width: face.width, height: face.height)
 
             if let approval = store.approvals.first {
                 ApprovalCard(approval: approval, position: 1, total: store.approvals.count, actions: actions)
@@ -89,7 +91,7 @@ struct NotchRootView: View {
                 SessionListView(store: store, actions: actions)
             }
 
-            if !viewModel.hooksInstalled {
+            if !viewModel.anyAgentConnected {
                 connectBanner
             }
         }
@@ -110,7 +112,7 @@ struct NotchRootView: View {
 
     private var settingsMenu: some View {
         Menu {
-            Button(viewModel.hooksInstalled ? "Disconnect Claude Code" : "Connect Claude Code", action: actions.toggleHooks)
+            Button("Settings…", action: actions.openSettings)
             Button("Preview all states", action: actions.runDemo)
             Divider()
             Button("Quit Pip", action: actions.quit)
@@ -130,15 +132,15 @@ struct NotchRootView: View {
     private var connectBanner: some View {
         HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Connect Claude Code")
+                Text("Connect your agents")
                     .font(.system(size: 12.5, weight: .semibold))
                     .foregroundStyle(.white)
-                Text("Adds Pip's hooks to ~/.claude/settings.json. A backup is kept.")
+                Text("Claude Code, Codex, Cursor and Antigravity")
                     .font(.system(size: 11))
                     .foregroundStyle(Palette.quiet)
             }
             Spacer(minLength: 8)
-            PillButton(title: "Connect", prominent: true, action: actions.toggleHooks)
+            PillButton(title: "Set up", prominent: true, action: actions.openSettings)
                 .frame(width: 96)
         }
         .padding(12)

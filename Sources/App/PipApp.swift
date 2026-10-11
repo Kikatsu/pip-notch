@@ -1,5 +1,5 @@
 import AppKit
-import ServiceManagement
+import Combine
 import SwiftUI
 
 @main
@@ -15,15 +15,19 @@ struct PipApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let store = SessionStore()
     private let server = SocketServer()
+    private let integrations = IntegrationsModel()
+    private lazy var settings = SettingsWindowController(integrations: integrations)
     private var notch: NotchWindowController?
     private var statusItem: NSStatusItem?
-    private var bridgePath: String?
+    private var subscriptions: Set<AnyCancellable> = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // As a unit-test host, stay inert so a running Pip keeps its socket.
         if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil { return }
+        PipDefaults.register()
+
         do {
-            bridgePath = try BridgeInstaller.installBundledBridge()
+            integrations.bridgePath = try BridgeInstaller.installBundledBridge()
         } catch {
             NSLog("Pip: could not install bridge: \(error)")
         }
@@ -42,22 +46,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             dismissApprovals: { [weak self] in
                 guard let self, let notch = self.notch else { return }
                 notch.viewModel.approvalsDismissed = true
-                notch.viewModel.isHovering = false
-                notch.viewModel.updateExpansion(store: self.store)
+                notch.collapse()
             },
-            jump: { TerminalJumper.focus($0) },
-            toggleHooks: { [weak self] in self?.toggleHooks() },
+            jump: { [weak self] session in
+                self?.notch?.collapse()
+                TerminalJumper.focus(session)
+            },
+            openSettings: { [weak self] in self?.openSettings() },
             runDemo: { [weak self] in self.map { DemoScript.run(on: $0.store) } },
             quit: { NSApp.terminate(nil) }
         )
         let notch = NotchWindowController(store: store, actions: actions)
         self.notch = notch
+        store.onAttention = { [weak self] attention in
+            self?.notch?.handle(attention)
+            SoundPlayer.shared.play(attention.cue)
+        }
         notch.show()
         setUpStatusItem()
-        refreshHookStatus()
+
+        integrations.$connected
+            .map { !$0.isEmpty }
+            .removeDuplicates()
+            .sink { [weak notch] connected in notch?.viewModel.anyAgentConnected = connected }
+            .store(in: &subscriptions)
+        integrations.refresh()
 
         if CommandLine.arguments.contains("--demo") {
             DemoScript.run(on: store)
+        }
+        if CommandLine.arguments.contains("--settings") {
+            openSettings()
         }
     }
 
@@ -83,39 +102,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         connection.watchForHangup { [weak self] in self?.store.approvalAbandoned(id) }
     }
 
-    // MARK: Claude Code hooks
-
-    private var installer: HookInstaller? {
-        bridgePath.map { HookInstaller(settingsURL: HookInstaller.claudeSettingsURL, bridgePath: $0) }
-    }
-
-    private func refreshHookStatus() {
-        notch?.viewModel.hooksInstalled = installer?.isInstalled() ?? false
-    }
-
-    private func toggleHooks() {
-        guard let installer else {
-            showAlert("Pip couldn't set up its helper", "The bundled pip-bridge tool is missing. Try reinstalling Pip.")
-            return
-        }
-        do {
-            if installer.isInstalled() {
-                try installer.uninstall()
-            } else {
-                try installer.install()
-            }
-        } catch {
-            showAlert("Couldn't update Claude Code settings", error.localizedDescription)
-        }
-        refreshHookStatus()
-    }
-
-    private func showAlert(_ title: String, _ message: String) {
-        NSApp.activate()
-        let alert = NSAlert()
-        alert.messageText = title
-        alert.informativeText = message
-        alert.runModal()
+    private func openSettings() {
+        notch?.collapse()
+        settings.show()
     }
 
     // MARK: Menu bar item
@@ -130,32 +119,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
-        refreshHookStatus()
+        integrations.refresh()
         menu.removeAllItems()
-        let connected = notch?.viewModel.hooksInstalled ?? false
-        menu.addItem(withTitle: connected ? "Claude Code connected" : "Claude Code not connected", action: nil, keyEquivalent: "").isEnabled = false
-        menu.addItem(withTitle: connected ? "Disconnect Claude Code" : "Connect Claude Code", action: #selector(menuToggleHooks), keyEquivalent: "").target = self
-        menu.addItem(withTitle: "Preview All States", action: #selector(menuDemo), keyEquivalent: "").target = self
+        let names = integrations.integrations.filter { integrations.connected.contains($0.agent) }.map(\.agent.displayName)
+        let summary = names.isEmpty ? "No agents connected" : "Connected: " + names.joined(separator: ", ")
+        menu.addItem(withTitle: summary, action: nil, keyEquivalent: "").isEnabled = false
         menu.addItem(.separator())
-        let login = menu.addItem(withTitle: "Open at Login", action: #selector(menuToggleLogin), keyEquivalent: "")
-        login.target = self
-        login.state = SMAppService.mainApp.status == .enabled ? .on : .off
+        menu.addItem(withTitle: "Settings…", action: #selector(menuSettings), keyEquivalent: ",").target = self
+        menu.addItem(withTitle: "Preview All States", action: #selector(menuDemo), keyEquivalent: "").target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit Pip", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
     }
 
-    @objc private func menuToggleHooks() { toggleHooks() }
+    @objc private func menuSettings() { openSettings() }
     @objc private func menuDemo() { DemoScript.run(on: store) }
+}
 
-    @objc private func menuToggleLogin() {
-        do {
-            if SMAppService.mainApp.status == .enabled {
-                try SMAppService.mainApp.unregister()
-            } else {
-                try SMAppService.mainApp.register()
-            }
-        } catch {
-            showAlert("Couldn't change Open at Login", error.localizedDescription)
+private extension SessionStore.Attention {
+    var cue: SoundCue {
+        switch self {
+        case .approval, .needsInput: .approval
+        case .finished: .finished
+        case .error: .error
+        case .rateLimited: .rateLimited
         }
     }
 }

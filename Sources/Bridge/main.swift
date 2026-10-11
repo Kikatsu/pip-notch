@@ -1,17 +1,41 @@
 import Foundation
 
-// pip-bridge <agent>
+// pip-bridge <agent> [event]
 //
 // Called by an agent hook. Reads the hook payload from stdin, forwards it to the Pip app,
-// and for blocking events prints the decision JSON the agent expects. Every failure path
-// exits 0 with no output, so the agent behaves exactly as if no hook were installed.
+// and for blocking events prints the decision JSON the agent expects. `event` names the
+// hook for agents whose payload doesn't (Antigravity).
+//
+// Every failure path still prints the agent's neutral answer (nothing for Claude Code and
+// Codex, `{}` for Cursor and Antigravity), so the agent behaves as if no hook were installed.
 
-let agent = CommandLine.arguments.dropFirst().first ?? "claude"
+let arguments = Array(CommandLine.arguments.dropFirst())
+let agent = arguments.first ?? "claude"
 let input = FileHandle.standardInput.readDataToEndOfFile()
+var payload = (try? JSONSerialization.jsonObject(with: input)) as? [String: Any]
+if arguments.count > 1, payload?["hook_event_name"] == nil {
+    payload?["hook_event_name"] = arguments[1]
+}
+let eventName = payload?["hook_event_name"] as? String ?? (arguments.count > 1 ? arguments[1] : "")
 
-guard let payload = (try? JSONSerialization.jsonObject(with: input)) as? [String: Any] else { exit(0) }
-let eventName = payload["hook_event_name"] as? String ?? ""
-let blocking = BridgeWire.blockingEvents.contains(eventName)
+/// The answer that changes nothing, for agents that require one.
+let neutralOutput: String? = {
+    switch agent {
+    case "cursor": eventName == "beforeSubmitPrompt" ? #"{"continue":true}"# : "{}"
+    case "antigravity": "{}"
+    default: nil
+    }
+}()
+
+func finish(_ output: String? = nil) -> Never {
+    if let text = output ?? neutralOutput {
+        FileHandle.standardOutput.write(Data(text.utf8))
+    }
+    exit(0)
+}
+
+guard let payload else { finish() }
+let blocking = BridgeWire.blockingEvents.contains(eventName) && (agent == "claude" || agent == "codex")
 
 let forwardedEnv = [
     "TERM_PROGRAM", "TERM_SESSION_ID", "ITERM_SESSION_ID", "TMUX", "TMUX_PANE",
@@ -29,14 +53,14 @@ let envelope: [String: Any] = [
     "env": env,
     "payload": payload,
 ]
-guard var line = try? JSONSerialization.data(withJSONObject: envelope) else { exit(0) }
+guard var line = try? JSONSerialization.data(withJSONObject: envelope) else { finish() }
 line.append(0x0A)
 
 let fd = SocketIO.connect(to: PipPaths.socketPath)
-guard fd >= 0 else { exit(0) }
+guard fd >= 0 else { finish() }
 guard SocketIO.writeAll(fd, line), blocking else {
     close(fd)
-    exit(0)
+    finish()
 }
 
 guard let reply = SocketIO.readLine(fd, timeout: BridgeWire.replyTimeout),
@@ -45,7 +69,7 @@ guard let reply = SocketIO.readLine(fd, timeout: BridgeWire.replyTimeout),
       decision == "allow" || decision == "deny"
 else {
     close(fd)
-    exit(0)
+    finish()
 }
 close(fd)
 
@@ -56,7 +80,5 @@ if decision == "deny" {
 let output: [String: Any] = [
     "hookSpecificOutput": ["hookEventName": eventName, "decision": decisionBody],
 ]
-if let data = try? JSONSerialization.data(withJSONObject: output) {
-    FileHandle.standardOutput.write(data)
-}
-exit(0)
+let data = (try? JSONSerialization.data(withJSONObject: output)) ?? Data()
+finish(String(data: data, encoding: .utf8))

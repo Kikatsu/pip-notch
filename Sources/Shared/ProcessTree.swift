@@ -14,6 +14,17 @@ enum ProcessTree {
         return ppid > 0 ? ppid : nil
     }
 
+    /// The controlling terminal of `pid`, e.g. "/dev/ttys003", if it has one.
+    static func tty(of pid: pid_t) -> String? {
+        var info = kinfo_proc()
+        var size = MemoryLayout<kinfo_proc>.stride
+        var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_PID, pid]
+        guard sysctl(&mib, 4, &info, &size, nil, 0) == 0, size > 0 else { return nil }
+        let device = info.kp_eproc.e_tdev
+        guard device != -1, let name = devname(device, S_IFCHR) else { return nil }
+        return "/dev/" + String(cString: name)
+    }
+
     static func name(of pid: pid_t) -> String {
         var buffer = [CChar](repeating: 0, count: 1024)
         let n = proc_name(pid, &buffer, UInt32(buffer.count))
