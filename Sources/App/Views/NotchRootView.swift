@@ -75,7 +75,7 @@ struct NotchRootView: View {
                 Color.clear.frame(width: viewModel.notchSize.width)
                 HStack {
                     Spacer()
-                    settingsMenu
+                    settingsButton
                 }
                 .frame(maxWidth: .infinity)
             }
@@ -110,23 +110,9 @@ struct NotchRootView: View {
         return parts.joined(separator: " · ")
     }
 
-    private var settingsMenu: some View {
-        Menu {
-            Button("Settings…", action: actions.openSettings)
-            Button("Preview all states", action: actions.runDemo)
-            Divider()
-            Button("Quit Pip", action: actions.quit)
-        } label: {
-            Image(systemName: "ellipsis")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(Palette.quiet)
-                .frame(width: 28, height: 22)
-                .contentShape(Rectangle())
-        }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .fixedSize()
-        .accessibilityLabel("Pip settings")
+    /// A plain button, not a menu: menus popped from a non-activating panel close as soon as they open.
+    private var settingsButton: some View {
+        SettingsGearButton(action: actions.openSettings)
     }
 
     private var connectBanner: some View {
@@ -151,4 +137,24 @@ struct NotchRootView: View {
 private struct NotchFrameKey: PreferenceKey {
     static var defaultValue: CGRect = .zero
     static func reduce(value: inout CGRect, nextValue: () -> CGRect) { value = nextValue() }
+}
+
+private struct SettingsGearButton: View {
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "gearshape.fill")
+                .font(.system(size: 12.5, weight: .semibold))
+                .foregroundStyle(hovering ? Color.white : Palette.quiet)
+                .frame(width: 30, height: 24)
+                .background(Circle().fill(hovering ? Palette.faint : .clear))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .help("Pip Settings")
+        .accessibilityLabel("Pip Settings")
+    }
 }

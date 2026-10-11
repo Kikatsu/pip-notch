@@ -13,7 +13,8 @@ final class NotchPanel: NSPanel {
         hasShadow = false
         isMovable = false
         hidesOnDeactivate = false
-        becomesKeyOnlyIfNeeded = true
+        // Become key on click (without activating Pip) so buttons respond like in any window.
+        becomesKeyOnlyIfNeeded = false
         ignoresMouseEvents = true
         isReleasedWhenClosed = false
     }

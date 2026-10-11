@@ -16,7 +16,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let store = SessionStore()
     private let server = SocketServer()
     private let integrations = IntegrationsModel()
-    private lazy var settings = SettingsWindowController(integrations: integrations)
+    private lazy var settings = SettingsWindowController(integrations: integrations) { [weak self] in
+        self.map { DemoScript.run(on: $0.store) }
+    }
     private var notch: NotchWindowController?
     private var statusItem: NSStatusItem?
     private var subscriptions: Set<AnyCancellable> = []
@@ -103,6 +105,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func openSettings() {
+        Log.ui.notice("Open Settings requested")
         notch?.collapse()
         settings.show()
     }

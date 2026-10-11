@@ -4,6 +4,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject var integrations: IntegrationsModel
+    var runDemo: () -> Void = {}
 
     @AppStorage(PipDefaults.character) private var character = CharacterStyle.livingNotch.rawValue
     @AppStorage(PipDefaults.soundsEnabled) private var soundsEnabled = true
@@ -61,6 +62,12 @@ struct SettingsView: View {
             }
 
             Section("General") {
+                LabeledContent("Preview") {
+                    Button("Play all states in the notch", action: runDemo)
+                }
+                LabeledContent("Pip") {
+                    Button("Quit Pip") { NSApp.terminate(nil) }
+                }
                 Toggle("Open Pip at login", isOn: $openAtLogin)
                     .onChange(of: openAtLogin) { _, on in
                         do {
@@ -203,25 +210,40 @@ extension Mood {
 
 @MainActor
 final class SettingsWindowController {
+    /// Centres the window on the screen under the pointer: the one with the notch you just clicked,
+    /// not necessarily the main display.
+    private func place(_ window: NSWindow) {
+        let pointer = NSEvent.mouseLocation
+        guard let screen = NSScreen.screens.first(where: { NSMouseInRect(pointer, $0.frame, false) }) ?? NSScreen.main else { return }
+        let area = screen.visibleFrame
+        var frame = window.frame
+        frame.size.height = min(frame.height, area.height - 40)
+        frame.origin = CGPoint(x: area.midX - frame.width / 2, y: area.midY - frame.height / 2)
+        window.setFrame(frame, display: false)
+    }
+
     private var window: NSWindow?
     private let integrations: IntegrationsModel
+    private let runDemo: () -> Void
 
-    init(integrations: IntegrationsModel) {
+    init(integrations: IntegrationsModel, runDemo: @escaping () -> Void) {
         self.integrations = integrations
+        self.runDemo = runDemo
     }
 
     func show() {
         if window == nil {
-            let host = NSHostingController(rootView: SettingsView(integrations: integrations))
+            let host = NSHostingController(rootView: SettingsView(integrations: integrations, runDemo: runDemo))
             let window = NSWindow(contentViewController: host)
             window.title = "Pip Settings"
             window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
             window.isReleasedWhenClosed = false
             window.setContentSize(NSSize(width: 560, height: 720))
-            window.center()
             self.window = window
         }
+        if let window, !window.isVisible { place(window) }
         integrations.refresh()
+        Log.ui.notice("Settings window shown")
         NSApp.activate()
         window?.makeKeyAndOrderFront(nil)
         // Activation can be refused while another app is frontmost; the window still comes forward.

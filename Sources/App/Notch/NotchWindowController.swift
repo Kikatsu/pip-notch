@@ -125,6 +125,7 @@ final class NotchWindowController {
             let since = insideSince ?? now
             insideSince = since
             if !viewModel.isHovering, now.timeIntervalSince(since) >= Self.hoverOpenDelay {
+                Log.ui.notice("Hover: open")
                 viewModel.isHovering = true
             }
         } else {
@@ -133,6 +134,7 @@ final class NotchWindowController {
                 let since = outsideSince ?? now
                 outsideSince = since
                 if now.timeIntervalSince(since) >= Self.hoverCloseDelay {
+                    Log.ui.notice("Hover: close (pointer left)")
                     viewModel.isHovering = false
                     outsideSince = nil
                 }
