@@ -90,7 +90,7 @@ struct AgentIntegration: Identifiable {
                     ("Stop", .async), ("StopFailure", .async),
                 ]),
                 detectPaths: [at(".claude").path],
-                note: "Takes effect in new Claude Code sessions."
+                note: "Approvals in the notch. Applies to new sessions."
             ),
             AgentIntegration(
                 agent: .codex,
@@ -101,7 +101,7 @@ struct AgentIntegration: Identifiable {
                     ("PermissionRequest", .blocking(timeout: 600)), ("Stop", .async),
                 ]),
                 detectPaths: [at(".codex").path],
-                note: "Codex asks you to trust new hooks: run /hooks in Codex once and approve Pip's."
+                note: "Approvals in the notch. Run /hooks in Codex once to trust Pip."
             ),
             AgentIntegration(
                 agent: .gemini,
@@ -114,14 +114,14 @@ struct AgentIntegration: Identifiable {
                     ("Notification", .sync(timeout: 5000)),
                 ]),
                 detectPaths: [at(".gemini/settings.json").path, "/opt/homebrew/bin/gemini", "/usr/local/bin/gemini"],
-                note: "Status only: approve Gemini's tool prompts in the terminal; the notch tells you when one is waiting."
+                note: "Status and alerts."
             ),
             AgentIntegration(
                 agent: .copilot,
                 configURL: at(".copilot/hooks/pip.json"),
                 format: .ownedFile(AgentPlugins.copilot(bridgePath:)),
                 detectPaths: [at(".copilot").path],
-                note: "Status only: the notch tells you when Copilot is waiting for an answer."
+                note: "Status and alerts."
             ),
             AgentIntegration(
                 agent: .droid,
@@ -133,28 +133,28 @@ struct AgentIntegration: Identifiable {
                     ("Stop", .sync(timeout: 5)),
                 ]),
                 detectPaths: [at(".factory").path],
-                note: "Status only: the notch tells you when Droid is waiting for permission."
+                note: "Status and alerts."
             ),
             AgentIntegration(
                 agent: .opencode,
                 configURL: at(".config/opencode/plugins/pip.js"),
                 format: .ownedFile(AgentPlugins.openCode(bridgePath:)),
                 detectPaths: [at(".config/opencode").path, at(".opencode").path],
-                note: "Installs a small plugin. Restart OpenCode to load it."
+                note: "Status and alerts. Restart OpenCode after connecting."
             ),
             AgentIntegration(
                 agent: .pi,
                 configURL: at(".pi/agent/extensions/pip.ts"),
                 format: .ownedFile(AgentPlugins.pi(bridgePath:)),
                 detectPaths: [at(".pi").path],
-                note: "Installs a small extension. Restart Pi to load it."
+                note: "Status and replies. Restart Pi after connecting."
             ),
             AgentIntegration(
                 agent: .kiro,
                 configURL: at(".kiro/hooks/pip.json"),
                 format: .ownedFile(AgentPlugins.kiro(bridgePath:)),
                 detectPaths: [at(".kiro").path, at(".local/bin/kiro-cli").path, "/opt/homebrew/bin/kiro-cli"],
-                note: "Kiro CLI 3 and later load global hooks from ~/.kiro/hooks."
+                note: "Status and replies. Needs Kiro CLI 3 or later."
             ),
             AgentIntegration(
                 agent: .cursor,
@@ -164,7 +164,7 @@ struct AgentIntegration: Identifiable {
                     "afterShellExecution", "afterFileEdit", "afterAgentResponse", "stop",
                 ], version: 1, extras: [:]),
                 detectPaths: [at(".cursor").path, "/Applications/Cursor.app", at(".local/bin/cursor-agent").path],
-                note: "Covers the Cursor app and the cursor-agent CLI. Status only: answer approvals in Cursor."
+                note: "App and cursor-agent CLI. Status and alerts."
             ),
             AgentIntegration(
                 agent: .windsurf,
@@ -173,7 +173,7 @@ struct AgentIntegration: Identifiable {
                     "pre_user_prompt", "post_run_command", "post_write_code", "post_mcp_tool_use", "post_cascade_response",
                 ], version: nil, extras: ["show_output": false]),
                 detectPaths: [at(".codeium/windsurf").path, "/Applications/Windsurf.app"],
-                note: "Status only, for Cascade in Windsurf."
+                note: "Cascade status and replies."
             ),
             AgentIntegration(
                 agent: .antigravity,
@@ -183,7 +183,7 @@ struct AgentIntegration: Identifiable {
                     at(".gemini/antigravity").path, at(".gemini/antigravity-cli").path, at(".gemini/config").path,
                     "/Applications/Antigravity.app", "/opt/homebrew/bin/agy", "/usr/local/bin/agy", at(".local/bin/agy").path,
                 ],
-                note: "Covers the Antigravity app and the agy CLI. Status only: answer approvals in Antigravity."
+                note: "App and agy CLI. Status and alerts."
             ),
         ]
     }

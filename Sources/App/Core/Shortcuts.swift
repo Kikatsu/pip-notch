@@ -32,9 +32,9 @@ enum Shortcut: UInt32, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .togglePanel: "Open or close the notch"
-        case .allow: "Allow the request (or approve the plan)"
-        case .deny: "Deny the request (or keep planning)"
-        case .jump: "Go to the session that needs you most"
+        case .allow: "Allow request or approve plan"
+        case .deny: "Deny request or keep planning"
+        case .jump: "Go to the session that needs you"
         case .mute: "Mute or unmute sounds"
         }
     }

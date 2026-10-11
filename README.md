@@ -24,7 +24,7 @@ xcodebuild -project Pip.xcodeproj -scheme Pip -derivedDataPath build/DerivedData
 
 ## Connecting agents
 
-Pip connects every agent it finds automatically, at launch and every minute after, so agents you install later are picked up too. It also repairs hooks that an agent update removed. Pressing **Disconnect** in Settings keeps that agent off, and **Connect agents automatically** turns the whole behaviour off. Open **Settings…** from the eyes icon in the menu bar or the ⚙ in the notch.
+Pip connects every agent it finds automatically, at launch and every minute after, so agents you install later are picked up too. It also repairs hooks that an agent update removed. Pressing **Disconnect** in Settings keeps that agent off, and **Connect agents automatically** turns the whole behaviour off. Open **Settings…** (General, Agents, Appearance, Sounds, Shortcuts) from the eyes icon in the menu bar or the ⚙ in the notch.
 
 When connecting, Pip copies its `pip-bridge` helper to `~/Library/Application Support/Pip/bin/` and adds its hooks to that agent's config, saving the previous file as `<file>.pip-backup`. **Disconnect** removes only Pip's hooks.
 
@@ -52,7 +52,7 @@ Only Claude Code's and Codex's `PermissionRequest` hooks wait for you, because o
 
 Settings has three characters, **Living notch** (the notch has eyes), **Burrow blob** and **Pixel bit**, plus **Minimal**: no character, just a small status dot (white while working, pulsing amber when an agent needs you, red on errors, green when done) and a face-free panel.
 
-Sounds are synthesized by Pip itself (`SoundPlayer.swift`), so there are no audio files or licences. Each cue (needs you, finished, error, rate limit) can be turned off separately, and there's a master switch and a volume slider.
+Sounds come in four packs: **Pip** (bells and marimba), **Soft** (quiet glass and wood) and **Arcade** (8-bit blips) are synthesized by Pip itself, and **macOS** uses the alert sounds that ship with the system (Ping, Glass, Basso, Submarine). Any alert can use your own file instead (MP3, WAV, AIFF or M4A, up to 15 seconds); Pip keeps a copy in `~/Library/Application Support/Pip/Sounds`. Each alert can be switched off, and there's a master switch and a volume slider.
 
 ## Reviewing plans and questions
 
