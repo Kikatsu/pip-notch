@@ -214,6 +214,7 @@ struct AgentIcon: View {
         .kimi: ["/Applications/Kimi.app"],
         .qwen: ["/Applications/Qwen.app"],
         .cursor: ["/Applications/Cursor.app"],
+        .grokBot: ["/Applications/Grok Bot.app"],
         .windsurf: ["/Applications/Windsurf.app"],
         .antigravity: ["/Applications/Antigravity.app"],
         .kiro: ["/Applications/Kiro.app"],

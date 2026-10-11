@@ -253,8 +253,8 @@ struct AgentIntegration: Identifiable {
                     "sessionStart", "sessionEnd", "beforeSubmitPrompt", "postToolUse",
                     "afterShellExecution", "afterFileEdit", "afterAgentResponse", "stop",
                 ], version: 1, extras: [:]),
-                detectPaths: [at(".cursor").path, "/Applications/Cursor.app", at(".local/bin/cursor-agent").path],
-                note: "App and cursor-agent CLI. Status and alerts."
+                detectPaths: [at(".cursor").path, "/Applications/Cursor.app", at(".local/bin/cursor-agent").path, "/Applications/Grok Bot.app"],
+                note: "Cursor, cursor-agent and Grok Bot's local agents. Status and alerts."
             ),
             AgentIntegration(
                 agent: .windsurf,

@@ -118,7 +118,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     // MARK: Events
 
-    private func receive(_ envelope: HookEnvelope, _ connection: BridgeConnection?) {
+    /// Bundle id of the app hosting each agent process, cached because walking the process tree per event is wasteful.
+    private var hostBundleIDs: [pid_t: String] = [:]
+
+    private func hostBundleID(_ envelope: HookEnvelope) -> String? {
+        if let id = envelope.env["__CFBundleIdentifier"] { return id }
+        guard let pid = envelope.pid else { return nil }
+        if let cached = hostBundleIDs[pid] { return cached }
+        let id = HostApps.app(env: envelope.env, pid: pid)?.bundleIdentifier ?? ""
+        hostBundleIDs[pid] = id
+        return id
+    }
+
+    private func receive(_ incoming: HookEnvelope, _ connection: BridgeConnection?) {
+        var envelope = incoming
+        if envelope.agent == .cursor, hostBundleID(envelope) == HostApps.grokBotBundleID {
+            envelope.agent = .grokBot
+        }
         // Claude Code's status line only carries plan limits; it isn't a session event.
         if envelope.eventName == "StatusLine" {
             if let limits = envelope.payload["rate_limits"] as? [String: Any] { usage.updateClaude(limits) }

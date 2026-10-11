@@ -33,6 +33,7 @@ extension AgentKind {
         case .vibe: "MV"
         case .qwen: "QW"
         case .cursor: "CU"
+        case .grokBot: "GB"
         case .windsurf: "WS"
         case .antigravity: "AG"
         case .unknown: "AI"
@@ -57,6 +58,7 @@ extension AgentKind {
         case .vibe: Color(red: 1.0, green: 0.55, blue: 0.25)
         case .qwen: Color(red: 0.55, green: 0.45, blue: 1.0)
         case .cursor: Color(red: 0.72, green: 0.85, blue: 1.0)
+        case .grokBot: Color(red: 0.88, green: 0.88, blue: 0.92)
         case .windsurf: Color(red: 0.35, green: 0.85, blue: 0.75)
         case .antigravity: Color(red: 0.40, green: 0.78, blue: 1.0)
         case .unknown: Color(white: 0.7)

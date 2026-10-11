@@ -2,7 +2,8 @@ import Foundation
 
 /// One hook event as forwarded by pip-bridge.
 struct HookEnvelope {
-    let agent: AgentKind
+    /// Mutable so the app can relabel events by the app they came from (Cursor's engine inside Grok Bot).
+    var agent: AgentKind
     /// The agent name exactly as the hook passed it (kept for agents Pip doesn't know).
     var rawAgent: String?
     let pid: pid_t?

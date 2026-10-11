@@ -2,7 +2,7 @@ import Foundation
 
 enum AgentKind: String, CaseIterable {
     case claude, codex, gemini, copilot, droid, opencode, pi, kiro, qoder, augment, goose, grok, kimi, vibe, qwen,
-         cursor, windsurf, antigravity, unknown
+         cursor, grokBot, windsurf, antigravity, unknown
 
     init(raw: String) { self = AgentKind(rawValue: raw) ?? .unknown }
 
@@ -24,6 +24,7 @@ enum AgentKind: String, CaseIterable {
         case .vibe: "Mistral Vibe"
         case .qwen: "Qwen Code"
         case .cursor: "Cursor"
+        case .grokBot: "Grok Bot"
         case .windsurf: "Windsurf"
         case .antigravity: "Antigravity"
         case .unknown: "Agent"
@@ -31,7 +32,7 @@ enum AgentKind: String, CaseIterable {
     }
 
     /// Editor-hosted agents: their process outlives sessions and they send no reliable end event.
-    var isIDE: Bool { self == .cursor || self == .windsurf || self == .antigravity }
+    var isIDE: Bool { self == .cursor || self == .grokBot || self == .windsurf || self == .antigravity }
 }
 
 enum SessionState: Equatable {

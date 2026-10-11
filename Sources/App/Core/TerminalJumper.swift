@@ -131,7 +131,9 @@ enum HostApps {
         "com.anthropic.claudefordesktop": "Claude",
         "com.openai.chat": "ChatGPT",
         "com.openai.codex": "Codex app",
+        "com.anysphere.sand": "Grok Bot",
     ]
+    static let grokBotBundleID = "com.anysphere.sand"
     static let editorNames: Set<String> = [
         "Code", "Visual Studio Code", "Cursor", "Windsurf", "VSCodium", "Zed", "Antigravity", "Trae", "Kiro",
     ]

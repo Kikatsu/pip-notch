@@ -41,7 +41,7 @@ When connecting, Pip copies its `pip-bridge` helper to `~/Library/Application Su
 | Qoder CLI | `~/.qoder/settings.json` | Status, tools, approvals from the notch |
 | Augment | `~/.augment/settings.json` | Status, tools and replies for `auggie` |
 | Goose | `~/.agents/plugins/pip/` (Pip's own plugin) | Status, tools and replies |
-| Cursor | `~/.cursor/hooks.json` | Status, tools and replies for the app and `cursor-agent`. Approvals stay in Cursor. |
+| Cursor | `~/.cursor/hooks.json` | Status, tools and replies for the app, `cursor-agent` and Grok Bot's local agents (shown as "Grok Bot"). Approvals stay in the app. |
 | Windsurf | `~/.codeium/windsurf/hooks.json` | Status, commands, edits and replies from Cascade |
 | Antigravity | `~/.gemini/config/hooks.json` | Status and tools for the app and the `agy` CLI. Approvals stay in Antigravity. |
 

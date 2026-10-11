@@ -16,7 +16,8 @@ enum AgentAdapter {
         case .kimi, .qwen: observingPermissions(payload)
         case .vibe: vibe(payload)
         case .goose: goose(payload)
-        case .cursor: cursor(payload)
+        // Grok Bot runs Cursor's agent engine, so its hooks speak Cursor's format.
+        case .cursor, .grokBot: cursor(payload)
         case .antigravity: antigravity(payload)
         case .gemini: gemini(payload)
         case .kiro: kiro(payload)
