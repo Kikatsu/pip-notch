@@ -15,8 +15,8 @@ struct AgentIntegration: Identifiable {
     enum Format {
         /// `{"hooks": {Event: [{"matcher"?, "hooks": [{"type","command",…}]}]}}`: Claude Code and Codex.
         case claudeStyle([(event: String, mode: Mode)])
-        /// `{"version": 1, "hooks": {event: [{"command"}]}}`: Cursor.
-        case cursor([String])
+        /// `{"version"?, "hooks": {event: [{"command", …extras}]}}`: Cursor (version 1) and Windsurf.
+        case flat(events: [String], version: Int?, extras: [String: Any])
         /// `{"pip": {"enabled", Event: [...]}}`: Antigravity.
         case antigravity
         /// A whole file that belongs to Pip (a plugin, an extension, a hooks file of its own).
@@ -43,6 +43,15 @@ struct AgentIntegration: Identifiable {
             return (try? String(contentsOf: configURL, encoding: .utf8))?.contains(HookConfig.marker) ?? false
         }
         return (try? HookFile(url: configURL).read()).map(HookConfig.containsPip) ?? false
+    }
+
+    /// Installed and pointing at this copy of the bridge, with an up-to-date Pip file.
+    func isInstalled(bridgePath: String) -> Bool {
+        guard let text = try? String(contentsOf: configURL, encoding: .utf8) else { return false }
+        if case .ownedFile(let contents) = format {
+            return text == contents(bridgePath)
+        }
+        return isInstalled() && text.contains(bridgePath)
     }
 
     func install(bridgePath: String) throws {
@@ -141,21 +150,40 @@ struct AgentIntegration: Identifiable {
                 note: "Installs a small extension. Restart Pi to load it."
             ),
             AgentIntegration(
+                agent: .kiro,
+                configURL: at(".kiro/hooks/pip.json"),
+                format: .ownedFile(AgentPlugins.kiro(bridgePath:)),
+                detectPaths: [at(".kiro").path, at(".local/bin/kiro-cli").path, "/opt/homebrew/bin/kiro-cli"],
+                note: "Kiro CLI 3 and later load global hooks from ~/.kiro/hooks."
+            ),
+            AgentIntegration(
                 agent: .cursor,
                 configURL: at(".cursor/hooks.json"),
-                format: .cursor([
+                format: .flat(events: [
                     "sessionStart", "sessionEnd", "beforeSubmitPrompt", "postToolUse",
                     "afterShellExecution", "afterFileEdit", "afterAgentResponse", "stop",
-                ]),
-                detectPaths: [at(".cursor").path, "/Applications/Cursor.app"],
-                note: "Status only: answer Cursor's approvals in Cursor."
+                ], version: 1, extras: [:]),
+                detectPaths: [at(".cursor").path, "/Applications/Cursor.app", at(".local/bin/cursor-agent").path],
+                note: "Covers the Cursor app and the cursor-agent CLI. Status only: answer approvals in Cursor."
+            ),
+            AgentIntegration(
+                agent: .windsurf,
+                configURL: at(".codeium/windsurf/hooks.json"),
+                format: .flat(events: [
+                    "pre_user_prompt", "post_run_command", "post_write_code", "post_mcp_tool_use", "post_cascade_response",
+                ], version: nil, extras: ["show_output": false]),
+                detectPaths: [at(".codeium/windsurf").path, "/Applications/Windsurf.app"],
+                note: "Status only, for Cascade in Windsurf."
             ),
             AgentIntegration(
                 agent: .antigravity,
                 configURL: at(".gemini/config/hooks.json"),
                 format: .antigravity,
-                detectPaths: [at(".gemini").path, "/Applications/Antigravity.app"],
-                note: "Status only, for the Antigravity app and the agy CLI."
+                detectPaths: [
+                    at(".gemini/antigravity").path, at(".gemini/antigravity-cli").path, at(".gemini/config").path,
+                    "/Applications/Antigravity.app", "/opt/homebrew/bin/agy", "/usr/local/bin/agy", at(".local/bin/agy").path,
+                ],
+                note: "Covers the Antigravity app and the agy CLI. Status only: answer approvals in Antigravity."
             ),
         ]
     }
@@ -193,14 +221,15 @@ enum HookConfig {
             }
             result["hooks"] = hooks
 
-        case .cursor(let events):
+        case .flat(let events, let version, let extras):
             var hooks = result["hooks"] as? [String: Any] ?? [:]
             for event in events {
-                let handler: [String: Any] = ["command": command(bridgePath: bridgePath, agent: agent)]
+                var handler = extras
+                handler["command"] = command(bridgePath: bridgePath, agent: agent)
                 hooks[event] = (hooks[event] as? [[String: Any]] ?? []) + [handler]
             }
             result["hooks"] = hooks
-            if result["version"] == nil { result["version"] = 1 }
+            if let version, result["version"] == nil { result["version"] = version }
 
         case .ownedFile:
             break
@@ -238,7 +267,7 @@ enum HookConfig {
             }
             result["hooks"] = hooks.isEmpty ? nil : hooks
 
-        case .cursor:
+        case .flat:
             guard var hooks = config["hooks"] as? [String: Any] else { return config }
             for (event, value) in hooks {
                 guard let handlers = value as? [[String: Any]] else { continue }

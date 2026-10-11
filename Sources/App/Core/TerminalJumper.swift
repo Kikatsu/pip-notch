@@ -11,7 +11,9 @@ enum TerminalJumper {
             selectTmuxPane(pane, socket: tmux.split(separator: ",").first.map(String.init))
         }
         let host = hostApp(of: session)
-        let inEditor = session.agent.isIDE || env["TERM_PROGRAM"] == "vscode" || host.map(HostApps.isEditor) == true
+        // Decide by where the session runs, not which agent it is: `agy` and `cursor-agent`
+        // run in terminals and should jump to their tab, not open a folder.
+        let inEditor = env["TERM_PROGRAM"] == "vscode" || host.map(HostApps.isEditor) == true
         if inEditor, openWorkspace(of: session) {
             return
         }

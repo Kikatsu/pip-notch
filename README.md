@@ -2,7 +2,7 @@
 
 A macOS notch companion that shows what your AI coding agents are doing. The notch itself has eyes: they scan while agents work, widen when one needs your approval, cross out on errors and squint happily when a task finishes.
 
-Works with Claude Code, Codex, Gemini CLI, Copilot CLI, Droid, OpenCode, Pi, Cursor and Antigravity, including the Claude Code and Codex extensions inside VS Code, Cursor and other editors.
+Works with Claude Code, Codex, Gemini CLI, Copilot CLI, Droid, OpenCode, Pi, Kiro CLI, Cursor (app and `cursor-agent`), Windsurf and Antigravity (app and `agy`), including the Claude Code and Codex extensions inside VS Code, Cursor and other editors.
 
 ## Build and run
 
@@ -24,7 +24,9 @@ xcodebuild -project Pip.xcodeproj -scheme Pip -derivedDataPath build/DerivedData
 
 ## Connecting agents
 
-Open **Settings…** from the eyes icon in the menu bar or the ⋯ menu in the notch, then press **Connect** next to each agent. Pip copies its `pip-bridge` helper to `~/Library/Application Support/Pip/bin/` and adds its hooks to that agent's config, saving the previous file as `<file>.pip-backup`. **Disconnect** removes only Pip's hooks.
+Pip connects every agent it finds automatically, at launch and every minute after, so agents you install later are picked up too. It also repairs hooks that an agent update removed. Pressing **Disconnect** in Settings keeps that agent off, and **Connect agents automatically** turns the whole behaviour off. Open **Settings…** from the eyes icon in the menu bar or the ⚙ in the notch.
+
+When connecting, Pip copies its `pip-bridge` helper to `~/Library/Application Support/Pip/bin/` and adds its hooks to that agent's config, saving the previous file as `<file>.pip-backup`. **Disconnect** removes only Pip's hooks.
 
 | Agent | Config file | What Pip shows |
 | --- | --- | --- |
@@ -35,8 +37,12 @@ Open **Settings…** from the eyes icon in the menu bar or the ⋯ menu in the n
 | Droid | `~/.factory/hooks.json`, else `~/.factory/settings.json` | Status, tools; "needs you" on permission prompts |
 | OpenCode | `~/.config/opencode/plugins/pip.js` (Pip's own plugin) | Status, tools; "needs you" on permission prompts |
 | Pi | `~/.pi/agent/extensions/pip.ts` (Pip's own extension) | Status, tools, replies |
-| Cursor | `~/.cursor/hooks.json` | Status, tools and replies. Approvals stay in Cursor. |
+| Kiro CLI | `~/.kiro/hooks/pip.json` (Pip's own file, Kiro CLI 3+) | Status, tools, replies |
+| Cursor | `~/.cursor/hooks.json` | Status, tools and replies for the app and `cursor-agent`. Approvals stay in Cursor. |
+| Windsurf | `~/.codeium/windsurf/hooks.json` | Status, commands, edits and replies from Cascade |
 | Antigravity | `~/.gemini/config/hooks.json` | Status and tools for the app and the `agy` CLI. Approvals stay in Antigravity. |
+
+Not supported yet: Zed's own agent has no hooks, and Zed doesn't run Claude Code hooks for its Claude integration (Codex and Gemini in Zed work through their own hooks). Cline's hook format couldn't be confirmed.
 
 The Claude Code and Codex editor extensions use the same hooks as their CLIs. Each session row shows where it runs ("Claude Code · VS Code", "Codex · Ghostty"), and clicking it opens that project's editor window.
 

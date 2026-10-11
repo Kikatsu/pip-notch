@@ -15,6 +15,17 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section {
+                Toggle(isOn: Binding(get: { integrations.autoConnect }, set: { integrations.autoConnect = $0 })) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Connect agents automatically")
+                        Text("Pip connects every agent it finds, including ones you install later, and repairs hooks an agent update removed. Disconnecting an agent keeps it off.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+
+            Section {
                 ForEach(integrations.integrations.filter { !$0.agent.isIDE }) { integration in
                     AgentRow(integration: integration, model: integrations)
                 }
@@ -102,7 +113,7 @@ struct SettingsView: View {
         .formStyle(.grouped)
         .frame(width: 560)
         .frame(minHeight: 560, idealHeight: 720)
-        .onAppear { integrations.refresh() }
+        .onAppear { integrations.connectDetected() }
     }
 }
 
@@ -140,7 +151,7 @@ private struct AgentRow: View {
     }
 
     private func status(connected: Bool) -> String {
-        if connected { return "Connected" }
+        if connected { return model.autoConnected.contains(integration.agent) ? "Connected automatically" : "Connected" }
         return integration.isDetected ? "Not connected" : "Not found on this Mac"
     }
 }

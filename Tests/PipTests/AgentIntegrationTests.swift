@@ -40,6 +40,7 @@ final class AgentIntegrationTests: XCTestCase {
             .codex: [:],
             .cursor: ["version": 1, "hooks": ["stop": [["command": "./notify.sh"]]]],
             .antigravity: ["my-check": ["enabled": true, "Stop": [["type": "command", "command": "./x.sh"]]]],
+            .windsurf: ["hooks": ["pre_run_command": [["command": "./guard.sh", "show_output": true]]]],
         ]
         for (agent, original) in originals {
             let format = integration(agent).format

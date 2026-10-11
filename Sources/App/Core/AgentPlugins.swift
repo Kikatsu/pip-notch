@@ -149,4 +149,20 @@ enum AgentPlugins {
         let data = (try? JSONSerialization.data(withJSONObject: config, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])) ?? Data()
         return String(data: data, encoding: .utf8) ?? "{}"
     }
+
+    /// ~/.kiro/hooks/pip.json. Kiro's payload doesn't name its trigger, so it's passed as an argument.
+    static func kiro(bridgePath: String) -> String {
+        let hooks: [[String: Any]] = ["SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "Stop"].map { trigger in
+            [
+                "name": "Pip notch: \(trigger)",
+                "trigger": trigger,
+                "action": ["type": "command", "command": HookConfig.command(bridgePath: bridgePath, agent: .kiro, event: trigger)],
+                "timeout": 5,
+                "enabled": true,
+            ]
+        }
+        let config: [String: Any] = ["version": "v1", "hooks": hooks]
+        let data = (try? JSONSerialization.data(withJSONObject: config, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])) ?? Data()
+        return String(data: data, encoding: .utf8) ?? "{}"
+    }
 }

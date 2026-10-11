@@ -11,6 +11,8 @@ enum AgentAdapter {
         case .cursor: cursor(payload)
         case .antigravity: antigravity(payload)
         case .gemini: gemini(payload)
+        case .kiro: kiro(payload)
+        case .windsurf: windsurf(payload)
         case .copilot: copilot(payload)
         case .droid: droid(payload)
         // Pip's own OpenCode plugin and Pi extension already send Claude-shaped events.
@@ -114,6 +116,51 @@ enum AgentAdapter {
             out["hook_event_name"] = "AgentActive"
         }
         return canonicalizingTool(out)
+    }
+
+    // MARK: Kiro CLI (~/.kiro/hooks/pip.json)
+
+    /// Kiro's event name comes from pip-bridge's arguments; the rest is close to Claude's shape.
+    static func kiro(_ p: [String: Any]) -> [String: Any] {
+        var out = p
+        if out["tool_input"] == nil, let tags = p["tool_tags"] as? [String: Any] {
+            out["tool_name"] = tags["tool_name"]
+            out["tool_input"] = tags["tool_input"]
+        }
+        if out["last_assistant_message"] == nil { out["last_assistant_message"] = p["assistant_response"] }
+        if p["hook_event_name"] as? String == "PostToolUse" { out["hook_event_name"] = "PreToolUse" }
+        return canonicalizingTool(out)
+    }
+
+    // MARK: Windsurf (~/.codeium/windsurf/hooks.json)
+
+    static func windsurf(_ p: [String: Any]) -> [String: Any] {
+        let info = p["tool_info"] as? [String: Any] ?? [:]
+        var out: [String: Any] = ["session_id": p["trajectory_id"] as? String ?? "windsurf"]
+        out["cwd"] = info["cwd"]
+        switch p["agent_action_name"] as? String ?? p["hook_event_name"] as? String ?? "" {
+        case "pre_user_prompt":
+            out["hook_event_name"] = "UserPromptSubmit"
+            out["prompt"] = info["user_prompt"]
+        case "post_run_command":
+            out["hook_event_name"] = "PreToolUse"
+            out["tool_name"] = "Bash"
+            out["tool_input"] = ["command": info["command_line"] as? String ?? ""]
+        case "post_write_code":
+            out["hook_event_name"] = "PreToolUse"
+            out["tool_name"] = "Edit"
+            out["tool_input"] = ["file_path": info["file_path"] as? String ?? ""]
+        case "post_mcp_tool_use":
+            out["hook_event_name"] = "PreToolUse"
+            out["tool_name"] = info["mcp_tool_name"] as? String ?? "MCP tool"
+            out["tool_input"] = info["mcp_tool_arguments"] as? [String: Any] ?? [:]
+        case "post_cascade_response":
+            out["hook_event_name"] = "Stop"
+            out["last_assistant_message"] = info["response"]
+        default:
+            out["hook_event_name"] = "AgentActive"
+        }
+        return out
     }
 
     // MARK: Factory Droid (~/.factory)

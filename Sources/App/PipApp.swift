@@ -72,7 +72,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             .removeDuplicates()
             .sink { [weak notch] connected in notch?.viewModel.anyAgentConnected = connected }
             .store(in: &subscriptions)
-        integrations.refresh()
+        integrations.connectDetected()
+        // New agents get installed while Pip runs; pick them up without a restart.
+        let reconnect = Timer(timeInterval: 60, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.integrations.connectDetected() }
+        }
+        RunLoop.main.add(reconnect, forMode: .common)
 
         if CommandLine.arguments.contains("--demo") {
             DemoScript.run(on: store)

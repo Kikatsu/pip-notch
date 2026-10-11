@@ -4,7 +4,7 @@ import Foundation
 //
 // Called by an agent hook. Reads the hook payload from stdin, forwards it to the Pip app,
 // and for blocking events prints the decision JSON the agent expects. `event` names the
-// hook for agents whose payload doesn't (Antigravity).
+// hook for agents whose payload doesn't (Antigravity, Copilot, Kiro).
 //
 // Every failure path still prints the agent's neutral answer (nothing for most agents,
 // `{}` for Cursor, Antigravity and Gemini CLI), so the agent behaves as if no hook were installed.
@@ -51,6 +51,8 @@ let envelope: [String: Any] = [
     "agent": agent,
     "pid": Int(ProcessTree.agentProcess(startingAt: getppid())),
     "env": env,
+    // The hook runs in the agent's working directory; used when the payload has no cwd.
+    "cwd": FileManager.default.currentDirectoryPath,
     "payload": payload,
 ]
 guard var line = try? JSONSerialization.data(withJSONObject: envelope) else { finish() }
