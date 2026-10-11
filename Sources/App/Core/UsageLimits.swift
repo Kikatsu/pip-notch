@@ -26,7 +26,30 @@ struct UsageLimit: Identifiable, Equatable {
 /// and Codex (in its session logs). Windows disappear once they reset.
 @MainActor
 final class UsageStore: ObservableObject {
-    static let visibleKey = "limits.visible"
+    static let displayKey = "limits.display"
+    static let closedNotchKey = "limits.closedNotch"
+    static let lowThreshold = 80.0
+
+    enum Display: String, CaseIterable, Identifiable {
+        case always, whenLow, never
+        var id: String { rawValue }
+        var title: String {
+            switch self {
+            case .always: "Always"
+            case .whenLow: "When 80% or higher"
+            case .never: "Never"
+            }
+        }
+    }
+
+    /// The limits to show under the user's display choice, fullest first.
+    func shown(_ display: Display) -> [UsageLimit] {
+        switch display {
+        case .never: []
+        case .whenLow: limits.filter { $0.usedPercent >= Self.lowThreshold }
+        case .always: limits
+        }
+    }
 
     @Published private(set) var limits: [UsageLimit] = []
     private var claude: [UsageLimit] = []

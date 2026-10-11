@@ -158,6 +158,35 @@ final class NotchWindowController {
             }
         }
         viewModel.updateExpansion(store: store, now: now)
+        followPointer(pointer)
+    }
+
+    /// Points the character's eyes at the pointer, easing so they glide rather than jump.
+    /// Far away (or over another screen) they drift back to the middle.
+    private func followPointer(_ pointer: CGPoint) {
+        let frame = panel.frame
+        let shape = viewModel.shapeFrame
+        guard shape.width > 0 else { return }
+        let faceX: CGFloat, faceY: CGFloat
+        if viewModel.isExpanded {
+            faceX = frame.minX + shape.midX
+            faceY = frame.maxY - (viewModel.notchSize.height + 30)
+        } else {
+            faceX = frame.minX + shape.minX + 6 + NotchViewModel.earWidth / 2
+            faceY = frame.maxY - viewModel.notchSize.height / 2
+        }
+        let dx = pointer.x - faceX, dy = faceY - pointer.y
+        let distance = hypot(dx, dy)
+        var target = CGSize.zero
+        if distance < 700, panel.screen?.frame.contains(pointer) ?? false {
+            target = CGSize(width: max(-1, min(1, dx / 220)), height: max(-1, min(1, dy / 160)))
+        }
+        let current = viewModel.face.gaze
+        let next = CGSize(width: current.width + (target.width - current.width) * 0.3,
+                          height: current.height + (target.height - current.height) * 0.3)
+        if abs(next.width - current.width) > 0.01 || abs(next.height - current.height) > 0.01 {
+            viewModel.face.gaze = next
+        }
     }
 
     private func interactiveRect() -> CGRect {

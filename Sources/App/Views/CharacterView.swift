@@ -30,6 +30,10 @@ struct CharacterView: View {
     var large = false
     /// Forces a style (settings previews); otherwise the user's choice is used.
     var style: CharacterStyle?
+    /// Where the eyes look, -1...1 per axis.
+    var gaze: CGSize = .zero
+    var reaction: FaceState.Reaction?
+    var reactionStart: Date = .distantPast
 
     @AppStorage(PipDefaults.character) private var storedStyle = CharacterStyle.livingNotch.rawValue
 
@@ -37,9 +41,18 @@ struct CharacterView: View {
 
     var body: some View {
         let style = resolvedStyle
-        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: mood == .asleep && (style == .livingNotch || style == .minimal))) { context in
+        let reacting = reaction != nil && Date().timeIntervalSince(reactionStart) < (reaction?.duration ?? 0)
+        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: mood == .asleep && !reacting && (style == .livingNotch || style == .minimal))) { context in
             Canvas { gc, size in
                 let t = context.date.timeIntervalSinceReferenceDate
+                let (mood, scale) = Self.react(mood, reaction, age: context.date.timeIntervalSince(reactionStart))
+                if scale != CGSize(width: 1, height: 1) {
+                    gc.translateBy(x: size.width / 2, y: size.height / 2)
+                    gc.scaleBy(x: scale.width, y: scale.height)
+                    gc.translateBy(x: -size.width / 2, y: -size.height / 2)
+                }
+                let reach: CGFloat = large ? 5 : 1.6
+                gc.translateBy(x: gaze.width * reach, y: gaze.height * reach * 0.6)
                 switch style {
                 case .livingNotch:
                     EyeRenderer.draw(mood, time: t, in: &gc, size: size, eyeWidth: large ? 13 : 6, color: .white)
@@ -56,12 +69,45 @@ struct CharacterView: View {
         .accessibilityLabel(Text(Palette.label(for: mood)))
     }
 
+    /// The mood to draw while a reaction plays, and how to stretch the face.
+    static func react(_ mood: Mood, _ reaction: FaceState.Reaction?, age: TimeInterval) -> (Mood, CGSize) {
+        guard let reaction, age >= 0, age < reaction.duration else { return (mood, CGSize(width: 1, height: 1)) }
+        let progress = age / reaction.duration
+        let swell = CGFloat(sin(progress * .pi))
+        switch reaction {
+        case .hello:
+            let pop = 1 + 0.18 * swell
+            return (mood == .asleep ? .idle : mood, CGSize(width: pop, height: pop))
+        case .poke:
+            let wobble = CGFloat(sin(progress * .pi * 3)) * (1 - CGFloat(progress))
+            return (.finished, CGSize(width: 1 + 0.16 * wobble, height: 1 - 0.2 * wobble))
+        case .approve:
+            return (.finished, CGSize(width: 1 + 0.08 * swell, height: 1 + 0.08 * swell))
+        case .deny:
+            return (.rateLimited, CGSize(width: 1 + 0.06 * swell, height: 1 - 0.1 * swell))
+        }
+    }
+
     /// Frame for the character in the expanded panel.
     static func largeSize(for style: CharacterStyle) -> CGSize {
         switch style {
         case .livingNotch, .minimal: CGSize(width: 96, height: 30)
         case .blob, .pixel: CGSize(width: 96, height: 58)
         }
+    }
+}
+
+/// The notch's character wired to its live state: eyes follow the pointer, clicks get a reaction.
+struct InteractiveFace: View {
+    let mood: Mood
+    var large = false
+    @ObservedObject var face: FaceState
+
+    var body: some View {
+        CharacterView(mood: mood, large: large, gaze: face.gaze, reaction: face.reaction, reactionStart: face.reactionStart)
+            .contentShape(Rectangle())
+            .onTapGesture { face.react(.poke) }
+            .help(large ? "Say hi" : "")
     }
 }
 

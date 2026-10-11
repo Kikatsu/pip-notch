@@ -1,18 +1,44 @@
 import SwiftUI
 
-/// Plan usage as rings: one per window, coloured by how close you are to the limit.
-struct LimitRings: View {
+/// Plan usage as rings in a strip that lines up with the session rows: equal columns, leading-aligned.
+struct LimitStrip: View {
     let limits: [UsageLimit]
     let now: Date
 
     var body: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: 12) {
             ForEach(limits.prefix(4)) { limit in
                 LimitRing(limit: limit, now: now)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 2)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 9)
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Palette.faint))
+    }
+}
+
+/// The fullest limit as a tiny ring and percentage, for the closed notch's right ear.
+struct MiniLimitRing: View {
+    let limit: UsageLimit
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ZStack {
+                Circle().stroke(Color.white.opacity(0.15), lineWidth: 2)
+                Circle()
+                    .trim(from: 0, to: min(max(limit.usedPercent / 100, 0), 1))
+                    .stroke(LimitRing.tint(for: limit.usedPercent), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+            }
+            .frame(width: 11, height: 11)
+            Text("\(Int(limit.usedPercent.rounded()))%")
+                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.9))
+                .monospacedDigit()
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(limit.provider.displayName) \(limit.window.label) limit \(Int(limit.usedPercent.rounded())) percent")
     }
 }
 
@@ -22,8 +48,10 @@ struct LimitRing: View {
 
     private var fraction: Double { min(max(limit.usedPercent / 100, 0), 1) }
 
-    private var tint: Color {
-        switch limit.usedPercent {
+    private var tint: Color { Self.tint(for: limit.usedPercent) }
+
+    static func tint(for percent: Double) -> Color {
+        switch percent {
         case ..<60: Palette.green
         case ..<85: Palette.amber
         default: Palette.red

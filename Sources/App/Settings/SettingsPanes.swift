@@ -11,7 +11,8 @@ struct GeneralSettings: View {
     @ObservedObject var model: IntegrationsModel
     @ObservedObject var usage: UsageStore
     let runDemo: () -> Void
-    @AppStorage(UsageStore.visibleKey) private var showLimits = true
+    @AppStorage(UsageStore.displayKey) private var limitDisplay = UsageStore.Display.always.rawValue
+    @AppStorage(UsageStore.closedNotchKey) private var limitsInClosedNotch = false
     @State private var openAtLogin = SMAppService.mainApp.status == .enabled
     @State private var loginError: String?
 
@@ -42,7 +43,11 @@ struct GeneralSettings: View {
             }
 
             Section {
-                Toggle("Show usage limits in the notch", isOn: $showLimits)
+                Picker("Show limits", selection: $limitDisplay) {
+                    ForEach(UsageStore.Display.allCases) { Text($0.title).tag($0.rawValue) }
+                }
+                Toggle("Also show in the closed notch", isOn: $limitsInClosedNotch)
+                    .disabled(limitDisplay == UsageStore.Display.never.rawValue)
                 Toggle("Read Claude Code limits", isOn: Binding(get: { model.claudeLimits }, set: { model.claudeLimits = $0 }))
                 ForEach(usage.limits) { limit in
                     LabeledContent("\(limit.provider.displayName), \(limit.window == .fiveHour ? "5-hour" : limit.window == .weekly ? "weekly" : "spend") limit") {

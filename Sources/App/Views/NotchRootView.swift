@@ -6,7 +6,14 @@ struct NotchRootView: View {
     @ObservedObject var store: SessionStore
     @ObservedObject var usage: UsageStore
     let actions: NotchActions
-    @AppStorage(UsageStore.visibleKey) private var showLimits = true
+    @AppStorage(UsageStore.displayKey) private var limitDisplay = UsageStore.Display.always.rawValue
+    @AppStorage(UsageStore.closedNotchKey) private var limitsInClosedNotch = false
+
+    private var shownLimits: [UsageLimit] { usage.shown(UsageStore.Display(rawValue: limitDisplay) ?? .always) }
+    /// The fullest limit, when the user wants it in the closed notch.
+    private var earLimit: UsageLimit? {
+        limitsInClosedNotch ? shownLimits.max { $0.usedPercent < $1.usedPercent } : nil
+    }
     @AppStorage(PipDefaults.character) private var character = CharacterStyle.livingNotch.rawValue
 
     private var spring: Animation { .spring(response: 0.38, dampingFraction: 0.8) }
@@ -20,7 +27,7 @@ struct NotchRootView: View {
             if expanded {
                 expandedContent(mood: mood)
                     .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .top)))
-            } else if mood == .asleep {
+            } else if mood == .asleep, earLimit == nil {
                 Color.clear.frame(width: viewModel.notchSize.width, height: viewModel.notchSize.height)
             } else {
                 compactContent(mood: mood)
@@ -31,7 +38,7 @@ struct NotchRootView: View {
         .background(
             NotchShape(topRadius: topRadius, bottomRadius: expanded ? 26 : 10)
                 .fill(Color.black)
-                .opacity(!expanded && mood == .asleep ? 0 : 1)
+                .opacity(!expanded && mood == .asleep && earLimit == nil ? 0 : 1)
         )
         .background(
             // Reports the black shape's frame so the controller knows where the pointer counts as inside.
@@ -57,12 +64,20 @@ struct NotchRootView: View {
 
     private func compactContent(mood: Mood) -> some View {
         let height = viewModel.notchSize.height
+        let limit = earLimit
+        // Both ears grow together when the limit ring is shown, so the notch stays centred.
+        let ear = NotchViewModel.earWidth + (limit == nil ? 0 : 40)
         return HStack(spacing: 0) {
-            CharacterView(mood: mood)
-                .frame(width: NotchViewModel.earWidth, height: height)
+            InteractiveFace(mood: mood, face: viewModel.face)
+                .frame(width: ear, height: height)
             Color.clear.frame(width: viewModel.notchSize.width, height: height)
-            EarIndicator(mood: mood, workingCount: store.workingCount, sessionCount: store.sessions.count)
-                .frame(width: NotchViewModel.earWidth, height: height)
+            HStack(spacing: 7) {
+                if let limit { MiniLimitRing(limit: limit) }
+                if mood != .asleep {
+                    EarIndicator(mood: mood, workingCount: store.workingCount, sessionCount: store.sessions.count)
+                }
+            }
+            .frame(width: ear, height: height)
         }
     }
 
@@ -89,12 +104,12 @@ struct NotchRootView: View {
             // Minimal keeps the open panel purely informational: no face above the content.
             if style != .minimal {
                 let face = CharacterView.largeSize(for: style)
-                CharacterView(mood: mood, large: true)
+                InteractiveFace(mood: mood, large: true, face: viewModel.face)
                     .frame(width: face.width, height: face.height)
             }
 
-            if showLimits, !usage.limits.isEmpty, store.approvals.isEmpty {
-                LimitRings(limits: usage.limits, now: store.now)
+            if !shownLimits.isEmpty, store.approvals.isEmpty {
+                LimitStrip(limits: shownLimits, now: store.now)
             }
 
             if let approval = store.approvals.first {

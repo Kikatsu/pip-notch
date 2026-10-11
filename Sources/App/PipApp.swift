@@ -48,7 +48,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
 
         let actions = NotchActions(
-            resolve: { [weak self] id, decision in self?.store.resolve(id, with: decision) },
+            resolve: { [weak self] id, decision in self?.resolve(id, decision) },
             dismissApprovals: { [weak self] in
                 guard let self, let notch = self.notch else { return }
                 notch.viewModel.approvalsDismissed = true
@@ -85,7 +85,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         RunLoop.main.add(reconnect, forMode: .common)
 
-        UserDefaults.standard.register(defaults: [UsageStore.visibleKey: true])
+        UserDefaults.standard.register(defaults: [
+            UsageStore.displayKey: UsageStore.Display.always.rawValue,
+            UsageStore.closedNotchKey: false,
+        ])
         usage.refreshCodex()
         let usageTimer = Timer(timeInterval: 60, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
@@ -148,6 +151,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         SoundPlayer.shared.play(attention.cue)
     }
 
+    /// Answers a request and lets the character react to it.
+    private func resolve(_ id: UUID, _ decision: ApprovalDecision) {
+        store.resolve(id, with: decision)
+        switch decision {
+        case .allow: notch?.viewModel.face.react(.approve)
+        case .deny: notch?.viewModel.face.react(.deny)
+        case .passthrough: break
+        }
+    }
+
     private func answerInTerminal(_ approval: PendingApproval) {
         let session = store.sessions[approval.sessionID]
         store.resolve(approval.id, with: .passthrough)
@@ -194,11 +207,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             if case .question = approval.kind {
                 answerInTerminal(approval)
             } else if shortcut == .allow {
-                store.resolve(approval.id, with: .allow)
+                resolve(approval.id, .allow)
             } else if case .plan = approval.kind {
-                store.resolve(approval.id, with: .deny("The user wants to keep planning. Ask what they'd like to change."))
+                resolve(approval.id, .deny("The user wants to keep planning. Ask what they'd like to change."))
             } else {
-                store.resolve(approval.id, with: .deny)
+                resolve(approval.id, .deny)
             }
         case .jump:
             guard let session = store.approvals.first.flatMap({ store.sessions[$0.sessionID] }) ?? store.orderedSessions.first else { return }

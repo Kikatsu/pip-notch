@@ -2,7 +2,7 @@
 
 A macOS notch companion that shows what your AI coding agents are doing. The notch itself has eyes: they scan while agents work, widen when one needs your approval, cross out on errors and squint happily when a task finishes.
 
-Works with Claude Code, Codex, Gemini CLI, Copilot CLI, Droid, OpenCode, Pi, Kiro CLI, Qoder CLI, Augment (`auggie`), Goose, Cursor (app and `cursor-agent`), Windsurf and Antigravity (app and `agy`), including the Claude Code and Codex extensions inside VS Code, Cursor and other editors.
+Works with Claude Code, Codex, Gemini CLI, Copilot CLI, Droid, OpenCode, Pi, Kiro CLI, Qoder CLI, Augment (`auggie`), Goose, Grok Build, Kimi Code, Mistral Vibe, Qwen Code, Cursor (app and `cursor-agent`), Windsurf and Antigravity (app and `agy`), including the Claude Code and Codex extensions inside VS Code, Cursor and other editors.
 
 ## Build and run
 
@@ -60,9 +60,12 @@ The notch shows plan limits as rings (green, then amber from 60%, red from 85%) 
 - **Claude Code**: the 5-hour and weekly limits (and a spend limit behind a gateway). Claude Code only shares these with its status line, so Pip installs `pip-bridge claude-statusline` as the status line. If you already had one, Pip runs it unchanged and restores it when you turn this off; otherwise Claude Code shows a compact line such as `Opus 5.5 · 34% context · 5h 62% · week 88%`.
 - **Codex**: the 5-hour and weekly limits, read from its local session logs in `~/.codex/sessions`.
 
-Other agents don't expose their limits locally. Settings → General → Usage Limits turns the rings and the Claude status line on or off.
+Other agents don't expose their limits locally. Settings → General → Usage Limits chooses when to show them (always, only at 80% or higher, or never), can add the fullest limit as a small ring to the closed notch, and turns the Claude status line on or off.
 
 ## Characters and sounds
+
+The character is interactive: its eyes follow your pointer as you approach the notch, it perks up (or wakes up) when the notch opens, giggles when you click its face, looks pleased when you allow a request and squints when you deny one.
+
 
 Settings has three characters, **Living notch** (the notch has eyes), **Burrow blob** and **Pixel bit**, plus **Minimal**: no character, just a small status dot (white while working, pulsing amber when an agent needs you, red on errors, green when done) and a face-free panel.
 
