@@ -90,6 +90,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             .removeDuplicates()
             .sink { [weak notch] connected in notch?.viewModel.anyAgentConnected = connected }
             .store(in: &subscriptions)
+        integrations.$awaitingTrust
+            .removeDuplicates()
+            .scan((Set<AgentKind>(), Set<AgentKind>())) { previous, current in (previous.1, current) }
+            .sink { previous, current in
+                for agent in current.subtracting(previous) {
+                    NotificationManager.shared.postAwaitingTrustNotification(for: agent)
+                }
+            }
+            .store(in: &subscriptions)
         integrations.connectDetected()
         // New agents get installed while Pip runs; pick them up without a restart.
         let reconnect = Timer(timeInterval: 60, repeats: true) { [weak self] _ in
@@ -316,6 +325,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let headerItem = NSMenuItem(title: summary, action: nil, keyEquivalent: "")
         headerItem.isEnabled = false
         menu.addItem(headerItem)
+
+        for integration in integrations.integrations where integrations.awaitingTrust.contains(integration.agent) {
+            let trustItem = NSMenuItem(title: "⚠︎ Run /hooks in \(integration.agent.displayName) to trust Pip", action: #selector(menuSettings), keyEquivalent: "")
+            trustItem.target = self
+            menu.addItem(trustItem)
+        }
 
         let sessions = store.orderedSessions
         if !sessions.isEmpty {

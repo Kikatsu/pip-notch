@@ -11,6 +11,8 @@ final class IntegrationsModel: ObservableObject {
 
     let integrations: [AgentIntegration]
     @Published private(set) var connected: Set<AgentKind> = []
+    /// Connected agents that are ignoring Pip's hooks until the user trusts them in the agent.
+    @Published private(set) var awaitingTrust: Set<AgentKind> = []
     /// Agents Pip connected or repaired on its own since launch, shown in Settings.
     @Published private(set) var autoConnected: Set<AgentKind> = []
     @Published var lastError: String?
@@ -71,6 +73,7 @@ final class IntegrationsModel: ObservableObject {
 
     func refresh() {
         connected = Set(integrations.filter { $0.isInstalled() }.map(\.agent))
+        awaitingTrust = Set(integrations.filter { $0.awaitsTrust() }.map(\.agent))
     }
 
     /// A manual Connect or Disconnect. Disconnecting opts the agent out of auto-connect.

@@ -53,6 +53,14 @@ struct AgentIntegration: Identifiable {
         return (try? HookFile(url: configURL).read()).map(HookConfig.containsPip) ?? false
     }
 
+    /// Connected, but the agent won't run Pip's hooks until the user approves them in the agent.
+    /// Codex skips hooks it hasn't reviewed (`/hooks`) without any error, so the notch just stays empty.
+    func awaitsTrust() -> Bool {
+        guard agent == .codex, isInstalled() else { return false }
+        let configTOML = configURL.deletingLastPathComponent().appendingPathComponent("config.toml")
+        return !CodexHookTrust.hasTrustedHooks(configTOML: try? String(contentsOf: configTOML, encoding: .utf8))
+    }
+
     /// Installed and pointing at this copy of the bridge, with an up-to-date Pip file.
     func isInstalled(bridgePath: String) -> Bool {
         guard let text = try? String(contentsOf: configURL, encoding: .utf8) else { return false }
@@ -607,6 +615,19 @@ enum BridgeInstaller {
             try fm.moveItem(at: staging, to: destination)
         }
         return destination.path
+    }
+}
+
+/// Codex records each hook the user approved in `/hooks` as a `trusted_hash` under `[hooks.state]`
+/// in `~/.codex/config.toml`. Without one, Codex silently skips every hook in `hooks.json`.
+enum CodexHookTrust {
+    static func hasTrustedHooks(configTOML: String?) -> Bool {
+        guard let configTOML else { return false }
+        return configTOML.split(separator: "\n").contains { line in
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            // Either `trusted_hash = "…"` under a table header or an inline `{ trusted_hash = "…" }`.
+            return !trimmed.hasPrefix("#") && trimmed.contains("trusted_hash")
+        }
     }
 }
 

@@ -239,6 +239,20 @@ final class NotificationManager: NSObject, ObservableObject, UNUserNotificationC
         }
     }
 
+    /// When an agent starts ignoring its installed hooks because the user hasn't trusted them yet.
+    func postAwaitingTrustNotification(for agent: AgentKind) {
+        guard isEnabled else { return }
+        let content = UNMutableNotificationContent()
+        content.title = "\(agent.displayName) isn't sending anything to Pip yet"
+        content.body = "Run /hooks in \(agent.displayName), trust Pip's hooks, then start a new session."
+        let request = UNNotificationRequest(identifier: "trust-\(agent.rawValue)", content: content, trigger: nil)
+        center.add(request) { error in
+            if let error {
+                NSLog("Pip: failed to post trust notification: \(error)")
+            }
+        }
+    }
+
     // MARK: - Action Handling
 
     func resolveApproval(id: UUID, decision: ApprovalDecision) {

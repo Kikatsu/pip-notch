@@ -205,6 +205,12 @@ private struct AgentRow: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
+                    if model.awaitingTrust.contains(integration.agent) {
+                        Label("Not trusted yet: run /hooks in \(integration.agent.displayName) and trust Pip's hooks, then restart it.", systemImage: "exclamationmark.triangle.fill")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
             }
         }
