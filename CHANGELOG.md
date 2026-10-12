@@ -7,11 +7,12 @@ All notable changes to Pip are documented here. The format is based on [Keep a C
 ### Fixed
 
 - Amp: hooks now go to Amp's global `~/.config/amp/settings.json`. `~/.amp/settings.json` is a per-project file, so Amp never loaded them.
+- DeepSeek Harness: dsh never reads `~/.dsh/settings.json`, so its hooks never ran. Pip now mounts dsh's own Claude-hooks bridge from `~/.dsh/cordis.patch.yml` and points it at `~/.dsh/pip-hooks.json`. Approvals stay in dsh, which has no approval hook.
 - Events that arrive just after a session ends (each hook runs its own bridge process) no longer bring the session back as a ghost.
 
 ### Tested against real installs
 
-- Pi 0.73, Copilot CLI 1.0.95, OpenCode 1.19, Qwen Code 0.25, CodeBuddy 2.164 and Droid 0.238 deliver their events to Pip.
+- DeepSeek Harness 0.2.0-rc.2, Pi 0.73, Copilot CLI 1.0.95, OpenCode 1.19, Qwen Code 0.25, CodeBuddy 2.164 and Droid 0.238 deliver their events to Pip.
 - Kiro CLI 2.29 doesn't read `~/.kiro/hooks/`, so Pip's Kiro hooks don't load yet.
 
 ## [0.1.0] - 2026-10-12

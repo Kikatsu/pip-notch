@@ -67,10 +67,11 @@ struct AgentIntegration: Identifiable {
         if case .ownedFile(let contents) = format {
             return text == contents(bridgePath)
         }
+        let extrasCurrent = extraFiles.allSatisfy { (try? String(contentsOf: $0.url, encoding: .utf8)) == $0.contents(bridgePath) }
         if case .tomlBlock(let contents) = format {
-            return TomlBlock.extract(from: text) == TomlBlock.wrap(contents(bridgePath))
+            return TomlBlock.extract(from: text) == TomlBlock.wrap(contents(bridgePath)) && extrasCurrent
         }
-        return isInstalled() && text.contains(bridgePath)
+        return isInstalled() && text.contains(bridgePath) && extrasCurrent
     }
 
     func install(bridgePath: String) throws {
@@ -94,6 +95,7 @@ struct AgentIntegration: Identifiable {
 
     func uninstall() throws {
         if case .tomlBlock = format {
+            for extra in extraFiles { try? FileManager.default.removeItem(at: extra.url) }
             guard let text = try? String(contentsOf: configURL, encoding: .utf8), TomlBlock.contains(text) else { return }
             try TomlBlock.write(TomlBlock.removing(from: text), to: configURL)
             return
@@ -364,15 +366,13 @@ struct AgentIntegration: Identifiable {
             ),
             AgentIntegration(
                 agent: .dsh,
-                configURL: at(".dsh/settings.json"),
-                format: .claudeStyle([
-                    ("SessionStart", .async), ("SessionEnd", .async), ("UserPromptSubmit", .async),
-                    ("PreToolUse", .async), ("PostToolUse", .async), ("PostToolUseFailure", .async),
-                    ("PermissionRequest", .blocking(timeout: 600)), ("Notification", .async),
-                    ("Stop", .async), ("StopFailure", .async),
-                ]),
+                // dsh never reads a settings.json; hooks load only when its hooks-claude-code
+                // bridge is mounted from a patch layer and pointed at a hooks file.
+                configURL: at(".dsh/cordis.patch.yml"),
+                format: .tomlBlock { _ in AgentPlugins.dshPatch(hooksPath: at(".dsh/pip-hooks.json").path) },
                 detectPaths: [at(".dsh").path, at(".local/bin/dsh").path, "/opt/homebrew/bin/dsh"],
-                note: "DeepSeek Harness testbed and runner. Approvals in the notch."
+                note: "Status, tools and replies. Pip adds a marked block to cordis.patch.yml.",
+                extraFiles: [(at(".dsh/pip-hooks.json"), AgentPlugins.dshHooks(bridgePath:))]
             ),
             AgentIntegration(
                 agent: .codebuddy,

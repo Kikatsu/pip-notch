@@ -163,7 +163,7 @@ When connecting, Pip copies its `pip-bridge` helper to `~/Library/Application Su
 | Grok Build | Experimental | `~/.grok/hooks/pip.json` | Status and replies for xAI's Grok Build |
 | Kimi Code | Experimental | `~/.kimi-code/config.toml` | Status, tools, replies |
 | DeepSeek | Experimental | `~/.deepseek/settings.json` | Status, tools, replies |
-| DeepSeek Harness (`dsh`) | Experimental | `~/.dsh/settings.json` | Harness testbed status, tools, approvals from the notch |
+| DeepSeek Harness (`dsh`) | Experimental | `~/.dsh/cordis.patch.yml` + `~/.dsh/pip-hooks.json` | Status, tools and replies. dsh's hook bridge has no approval event, so approvals stay in dsh |
 | Mistral Vibe | Experimental | `~/.vibe/hooks.toml` | Status and replies for Mistral Vibe |
 | Copilot CLI | Tested | `~/.copilot/hooks/pip.json` | Status, tools; "needs you" on permission prompts |
 | CodeBuddy | Experimental | `~/.codebuddy/settings.json` | Companion status, tools, replies |

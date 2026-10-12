@@ -279,6 +279,28 @@ enum AgentPlugins {
             .joined(separator: "\n\n")
     }
 
+    /// Pip's entry for the home patch layer, ~/.dsh/cordis.patch.yml (DeepSeek Harness). dsh runs
+    /// Claude-style hooks only through its hooks-claude-code bridge, which reads one config file.
+    static func dshPatch(hooksPath: String) -> String {
+        """
+        - insert:
+            - id: pip-notch-hooks
+              name: '@deepseek-ai/dsh-hooks-claude-code'
+              config:
+                configPath: '\(hooksPath.replacingOccurrences(of: "'", with: "''"))'
+        """
+    }
+
+    /// The hooks file the dsh bridge reads. It ignores `async` and has no PermissionRequest or
+    /// SessionEnd, so every hook is a short sync call and sessions end when dsh exits.
+    static func dshHooks(bridgePath: String) -> String {
+        let events = ["SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "Stop"]
+            .map { (event: $0, mode: AgentIntegration.Mode.sync(timeout: 5)) }
+        let config = HookConfig.installing(.claudeStyle(events), agent: .dsh, bridgePath: bridgePath, into: [:])
+        let data = (try? JSONSerialization.data(withJSONObject: config, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])) ?? Data("{}".utf8)
+        return String(decoding: data, as: UTF8.self) + "\n"
+    }
+
     /// `[[hooks]]` entries for ~/.vibe/hooks.toml (Mistral Vibe).
     static func vibe(bridgePath: String) -> String {
         ["pre_tool", "post_tool", "post_agent"]
