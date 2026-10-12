@@ -4,6 +4,10 @@ All notable changes to Pip are documented here. The format is based on [Keep a C
 
 ## [Unreleased]
 
+### Added
+
+- Update check: once a day (and at launch) Pip reads its public release list on GitHub. When a newer version is out it posts a notification and shows **Update Available** in the menu bar menu and a **Download** button in Settings → General. Turn it off there with **Check for updates**.
+
 ## [0.1.1] - 2026-10-12
 
 ### Added

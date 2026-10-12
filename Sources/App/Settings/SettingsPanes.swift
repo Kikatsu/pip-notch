@@ -10,6 +10,7 @@ private let paneWidth: CGFloat = 540
 struct GeneralSettings: View {
     @ObservedObject var model: IntegrationsModel
     @ObservedObject var usage: UsageStore
+    @ObservedObject var updates: UpdateChecker
     let runDemo: () -> Void
     @AppStorage(UsageStore.displayKey) private var limitDisplay = UsageStore.Display.always.rawValue
     @AppStorage(UsageStore.closedNotchKey) private var limitsInClosedNotch = false
@@ -74,7 +75,22 @@ struct GeneralSettings: View {
             }
 
             Section("About") {
-                LabeledContent("Version", value: version)
+                LabeledContent("Version") {
+                    HStack {
+                        if let release = updates.available {
+                            Button("Download \(release.version)") { NSWorkspace.shared.open(release.url) }
+                        } else if updates.checking {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            if let error = updates.lastError {
+                                Text(error).foregroundStyle(.secondary)
+                            }
+                            Button("Check Now") { updates.check() }
+                        }
+                        Text(version).foregroundStyle(.secondary)
+                    }
+                }
+                Toggle("Check for updates", isOn: Binding(get: { updates.isEnabled }, set: { updates.isEnabled = $0 }))
                 LabeledContent("Helper") {
                     HStack {
                         Text(model.bridgePath.map(abbreviate) ?? "Not installed")
@@ -97,7 +113,7 @@ struct GeneralSettings: View {
                     Button("Quit Pip") { NSApp.terminate(nil) }
                 }
             } footer: {
-                Text("Pip works entirely on this Mac. It has no accounts and sends nothing anywhere.")
+                Text("Pip works on this Mac. It has no accounts and collects nothing. The update check only reads Pip's public release list on GitHub.")
             }
         }
         .formStyle(.grouped)

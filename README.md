@@ -77,6 +77,8 @@ Real captures from Pip running on macOS, using its built-in demo (`Pip --demo`),
 
 Needs macOS 14 Sonoma or later. Works on Apple Silicon and Intel Macs.
 
+Pip checks GitHub once a day and tells you in the menu bar and with a notification when a new version is out. To get an email too, click **Watch → Custom → Releases** on this repo.
+
 ### Requirements (build from source)
 
 - A Mac running **macOS 14 Sonoma or later**. A notch isn't required; on Macs and displays without one, Pip draws its own at the top of the screen.
@@ -357,7 +359,7 @@ agent hook ──▶ pip-bridge (stdin JSON) ──▶ Unix socket ──▶ Pip
 └── video/                   Remotion source for the promo video (optional)
 ```
 
-Pip talks to agents only through their local hook files and a Unix socket in `~/Library/Application Support/Pip/`. It makes no network requests and collects no telemetry.
+Pip talks to agents only through their local hook files and a Unix socket in `~/Library/Application Support/Pip/`. It collects no telemetry. Its only network request is a daily read of Pip's public release list on GitHub to see if there's a newer version; turn it off with **Settings → General → Check for updates**.
 
 ## Contributing
 

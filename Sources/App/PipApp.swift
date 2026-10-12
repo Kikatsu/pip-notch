@@ -21,7 +21,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let server = SocketServer()
     private let integrations = IntegrationsModel()
     private let usage = UsageStore()
-    private lazy var settings = SettingsWindowController(integrations: integrations, usage: usage) { [weak self] in
+    private let updates = UpdateChecker()
+    private lazy var settings = SettingsWindowController(integrations: integrations, usage: usage, updates: updates) { [weak self] in
         self.map { DemoScript.run(on: $0.store) }
     }
     private var notch: NotchWindowController?
@@ -123,6 +124,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
         }
         RunLoop.main.add(usageTimer, forMode: .common)
+
+        updates.onNewVersion = { release in
+            NotificationManager.shared.postUpdateNotification(version: release.version, url: release.url)
+        }
+        updates.start()
 
         if CommandLine.arguments.contains("--demo") {
             DemoScript.run(on: store)
@@ -318,6 +324,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         integrations.refresh()
         menu.removeAllItems()
 
+        if let release = updates.available {
+            let updateItem = NSMenuItem(title: "Update Available: Pip \(release.version)…", action: #selector(menuOpenUpdate), keyEquivalent: "")
+            updateItem.target = self
+            menu.addItem(updateItem)
+            menu.addItem(.separator())
+        }
+
         let toggleItem = NSMenuItem(title: "Toggle Notch", action: #selector(menuToggleNotch), keyEquivalent: " ")
         toggleItem.keyEquivalentModifierMask = [.control, .option]
         toggleItem.target = self
@@ -384,6 +397,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
     @objc private func menuSettings() { openSettings() }
+    @objc private func menuOpenUpdate() {
+        if let url = updates.available?.url { NSWorkspace.shared.open(url) }
+    }
     @objc private func menuDemo() { DemoScript.run(on: store) }
 }
 

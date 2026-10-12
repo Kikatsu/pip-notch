@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import UserNotifications
 
@@ -253,6 +254,20 @@ final class NotificationManager: NSObject, ObservableObject, UNUserNotificationC
         }
     }
 
+    func postUpdateNotification(version: String, url: URL) {
+        guard isEnabled else { return }
+        let content = UNMutableNotificationContent()
+        content.title = "Pip \(version) is available"
+        content.body = "Click to open the download page."
+        content.userInfo = ["updateURL": url.absoluteString]
+        let request = UNNotificationRequest(identifier: "update-\(version)", content: content, trigger: nil)
+        center.add(request) { error in
+            if let error {
+                NSLog("Pip: failed to post update notification: \(error)")
+            }
+        }
+    }
+
     // MARK: - Action Handling
 
     func resolveApproval(id: UUID, decision: ApprovalDecision) {
@@ -282,6 +297,8 @@ final class NotificationManager: NSObject, ObservableObject, UNUserNotificationC
         case Self.actionJump, UNNotificationDefaultActionIdentifier:
             if let sessionID = userInfo["sessionID"] as? String {
                 focusSession(id: sessionID)
+            } else if let page = userInfo["updateURL"] as? String, let url = URL(string: page) {
+                NSWorkspace.shared.open(url)
             }
         default:
             break
