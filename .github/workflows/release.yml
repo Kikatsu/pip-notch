@@ -1,0 +1,55 @@
+name: Release
+
+# Push a tag like v0.1.2 to build Pip and publish it on GitHub Releases.
+# Run it by hand (Actions > Release > Run workflow) to build the zip as an artifact without releasing.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Build and package
+        id: package
+        run: echo "zip=$(scripts/package-release.sh | tail -1)" >> "$GITHUB_OUTPUT"
+
+      - name: Check the tag matches project.yml
+        if: github.ref_type == 'tag'
+        run: |
+          expected="dist/Pip-${GITHUB_REF_NAME#v}.zip"
+          if [ "${{ steps.package.outputs.zip }}" != "$expected" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME doesn't match the version in project.yml (${{ steps.package.outputs.zip }})"
+            exit 1
+          fi
+
+      - name: Upload artifact
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pip
+          path: ${{ steps.package.outputs.zip }}
+
+      - name: Publish release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="$version" '$0 ~ "^## \\[" v "\\]" {f=1; next} /^## \[/ {f=0} f' CHANGELOG.md > notes.md
+          cat scripts/release-notes-install.md >> notes.md
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "${{ steps.package.outputs.zip }}" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "${{ steps.package.outputs.zip }}" \
+              --title "Pip $version (beta)" --prerelease --notes-file notes.md
+          fi
