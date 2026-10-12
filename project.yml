@@ -23,8 +23,8 @@ targets:
       path: Sources/App/Info.plist
       properties:
         CFBundleDisplayName: Pip
-        CFBundleShortVersionString: "0.1.2"
-        CFBundleVersion: "3"
+        CFBundleShortVersionString: "0.1.3"
+        CFBundleVersion: "4"
         LSMinimumSystemVersion: "14.0"
         LSUIElement: true
         NSAppleEventsUsageDescription: Pip brings the terminal running your agent to the front.

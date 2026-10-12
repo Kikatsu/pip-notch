@@ -4,6 +4,8 @@ All notable changes to Pip are documented here. The format is based on [Keep a C
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-10-12
+
 ### Added
 
 - Homebrew: `brew install --cask kikatsu/tap/pip-notch`. Each release updates the cask automatically.
