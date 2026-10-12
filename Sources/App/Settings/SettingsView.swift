@@ -42,12 +42,15 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private let usage: UsageStore
     private let updates: UpdateChecker
     private let runDemo: () -> Void
+    private let showWelcome: () -> Void
 
-    init(integrations: IntegrationsModel, usage: UsageStore, updates: UpdateChecker, runDemo: @escaping () -> Void) {
+    init(integrations: IntegrationsModel, usage: UsageStore, updates: UpdateChecker,
+         runDemo: @escaping () -> Void, showWelcome: @escaping () -> Void) {
         self.integrations = integrations
         self.usage = usage
         self.updates = updates
         self.runDemo = runDemo
+        self.showWelcome = showWelcome
     }
 
     /// Opens Settings, centred on `screen` (the notch's screen when opened from the notch).
@@ -91,7 +94,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
     private func content(for pane: SettingsPane) -> AnyView {
         switch pane {
-        case .general: AnyView(GeneralSettings(model: integrations, usage: usage, updates: updates, runDemo: runDemo))
+        case .general: AnyView(GeneralSettings(model: integrations, usage: usage, updates: updates, runDemo: runDemo, showWelcome: showWelcome))
         case .agents: AnyView(AgentSettings(model: integrations))
         case .appearance: AnyView(AppearanceSettings())
         case .sounds: AnyView(SoundSettings())

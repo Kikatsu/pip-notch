@@ -22,8 +22,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let integrations = IntegrationsModel()
     private let usage = UsageStore()
     private let updates = UpdateChecker()
-    private lazy var settings = SettingsWindowController(integrations: integrations, usage: usage, updates: updates) { [weak self] in
-        self.map { DemoScript.run(on: $0.store) }
+    private lazy var settings = SettingsWindowController(
+        integrations: integrations, usage: usage, updates: updates,
+        runDemo: { [weak self] in self.map { DemoScript.run(on: $0.store) } },
+        showWelcome: { [weak self] in self?.showOnboarding() }
+    )
+    private lazy var onboarding = OnboardingWindowController(integrations: integrations) { [weak self] playDemo in
+        self?.onboardingFinished(playDemo: playDemo)
     }
     private var notch: NotchWindowController?
     private var statusItem: NSStatusItem?
@@ -38,8 +43,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         NotificationManager.shared.onResolve = { [weak self] id, decision in self?.resolve(id, decision) }
         NotificationManager.shared.sessionLookup = { [weak self] sessionID in self?.store.sessions[sessionID] }
         UNUserNotificationCenter.current().delegate = NotificationManager.shared
-        Task {
-            _ = try? await NotificationManager.shared.requestAuthorization()
+        // On first launch the tour asks for this, with context, instead of a bare system prompt.
+        if !OnboardingWindowController.shouldShowOnLaunch {
+            Task {
+                _ = try? await NotificationManager.shared.requestAuthorization()
+            }
         }
 
         do {
@@ -138,6 +146,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         if CommandLine.arguments.contains("--settings") {
             openSettings()
+        }
+        if OnboardingWindowController.shouldShowOnLaunch {
+            // Let the notch settle in first, so "look up" has something to look at.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in self?.showOnboarding() }
+        }
+    }
+
+    // MARK: Onboarding
+
+    private func showOnboarding() {
+        notch?.collapse()
+        onboarding.show(on: notch?.screen)
+    }
+
+    /// The tour closed: Pip says hello from the real notch, or runs the demo if asked.
+    private func onboardingFinished(playDemo: Bool) {
+        guard let notch else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
+            guard let self else { return }
+            if playDemo {
+                DemoScript.run(on: self.store)
+            } else {
+                notch.toggle()
+            }
         }
     }
 
@@ -384,6 +416,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         menu.addItem(withTitle: "Settings…", action: #selector(menuSettings), keyEquivalent: ",").target = self
         menu.addItem(withTitle: "Preview All States", action: #selector(menuDemo), keyEquivalent: "").target = self
+        menu.addItem(withTitle: "Welcome Tour…", action: #selector(menuWelcome), keyEquivalent: "").target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit Pip", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
     }
@@ -401,6 +434,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if let url = updates.available?.url { NSWorkspace.shared.open(url) }
     }
     @objc private func menuDemo() { DemoScript.run(on: store) }
+    @objc private func menuWelcome() { showOnboarding() }
 }
 
 private extension SessionStore.Attention {

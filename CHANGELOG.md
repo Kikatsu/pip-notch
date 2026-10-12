@@ -7,6 +7,14 @@ All notable changes to Pip are documented here. The format is based on [Keep a C
 ### Added
 
 - Homebrew: `brew install --cask kikatsu/tap/pip-notch`. Each release updates the cask automatically.
+- Welcome tour on first launch: meet Pip, see the states and approvals (with clips from the promo video), check which agents were connected, pick a personality, and set preferences, with its own synthesized sound effects. Replay it from Settings → General or the menu bar.
+- Settings → General → Display: put the notch on the built-in display (automatic), the primary display, whichever display has the pointer, or one specific display that Pip remembers across reconnects.
+- Open at login is offered during the tour, and Settings shows when it's been switched off in System Settings → Login Items.
+
+### Changed
+
+- Without a built-in notch (lid closed), the notch now goes on the primary display rather than whichever screen last had a Pip window.
+- Pip asks for notification permission during the tour, with an explanation, instead of right at first launch.
 
 ## [0.1.2] - 2026-10-12
 

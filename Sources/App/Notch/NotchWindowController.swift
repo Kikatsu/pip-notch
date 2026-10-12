@@ -9,6 +9,8 @@ final class NotchWindowController {
     private static let hoverCloseDelay: TimeInterval = 0.6
     /// After a click inside the notch, stay open this long even if the pointer drifts out.
     private static let clickHold: TimeInterval = 1.5
+    /// In "follow pointer" mode, how long the pointer rests on another display before the notch moves there.
+    private static let followDelay: TimeInterval = 0.35
 
     let viewModel: NotchViewModel
     private let store: SessionStore
@@ -22,6 +24,8 @@ final class NotchWindowController {
     private var menuOpen = false
     private var holdOpenUntil = Date.distantPast
     private var clickMonitor: Any?
+    private var displaySetting = NotchDisplay.current
+    private var pointerOnOtherScreenSince: Date?
 
     init(store: SessionStore, usage: UsageStore, actions: NotchActions) {
         self.store = store
@@ -44,6 +48,13 @@ final class NotchWindowController {
                 guard let self else { return }
                 self.placeOnScreen()
                 self.viewModel.updateExpansion(store: self.store)
+            }
+        }
+        center.addObserver(forName: UserDefaults.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self, NotchDisplay.current != self.displaySetting else { return }
+                self.displaySetting = NotchDisplay.current
+                self.placeOnScreen()
             }
         }
         center.addObserver(forName: NSMenu.didBeginTrackingNotification, object: nil, queue: .main) { [weak self] _ in
@@ -92,8 +103,10 @@ final class NotchWindowController {
         }
     }
 
-    private func placeOnScreen() {
-        guard let screen = NotchGeometry.preferredScreen() else { return }
+    private func placeOnScreen(_ target: NSScreen? = nil) {
+        guard let screen = target ?? NotchGeometry.preferredScreen() else { return }
+        pointerOnOtherScreenSince = nil
+        if screen != geometry?.screen { Log.ui.notice("Notch moved to \(screen.localizedName, privacy: .public)") }
         let geometry = NotchGeometry(screen: screen)
         self.geometry = geometry
         viewModel.notchSize = geometry.notchSize
@@ -172,6 +185,21 @@ final class NotchWindowController {
         }
         viewModel.updateExpansion(store: store, now: now)
         followPointer(pointer)
+        moveToPointerScreen(pointer, now: now)
+    }
+
+    /// "Follow pointer" mode: once the pointer settles on another display, the notch goes with it.
+    /// It never moves while open, so an approval can't jump away mid-click.
+    private func moveToPointerScreen(_ pointer: CGPoint, now: Date) {
+        guard displaySetting == .followPointer, !viewModel.isExpanded,
+              let target = NSScreen.screens.first(where: { $0.frame.contains(pointer) }),
+              target != geometry?.screen else {
+            pointerOnOtherScreenSince = nil
+            return
+        }
+        let since = pointerOnOtherScreenSince ?? now
+        pointerOnOtherScreenSince = since
+        if now.timeIntervalSince(since) >= Self.followDelay { placeOnScreen(target) }
     }
 
     /// Points the character's eyes at the pointer, easing so they glide rather than jump.

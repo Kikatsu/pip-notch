@@ -1,5 +1,4 @@
 import AppKit
-import ServiceManagement
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -15,7 +14,9 @@ struct GeneralSettings: View {
     @AppStorage(UsageStore.displayKey) private var limitDisplay = UsageStore.Display.always.rawValue
     @AppStorage(UsageStore.closedNotchKey) private var limitsInClosedNotch = false
     @AppStorage(PipDefaults.notificationsEnabled) private var notificationsEnabled = true
-    @State private var openAtLogin = SMAppService.mainApp.status == .enabled
+    let showWelcome: () -> Void
+    @State private var openAtLogin = LoginItem.status != .off
+    @State private var loginStatus = LoginItem.status
     @State private var loginError: String?
 
     private var version: String {
@@ -28,13 +29,21 @@ struct GeneralSettings: View {
                 Toggle("Open at login", isOn: $openAtLogin)
                     .onChange(of: openAtLogin) { _, on in
                         do {
-                            if on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
+                            try LoginItem.set(on)
                             loginError = nil
                         } catch {
                             loginError = error.localizedDescription
-                            openAtLogin = SMAppService.mainApp.status == .enabled
                         }
+                        refreshLoginStatus()
                     }
+                if loginStatus == .needsApproval {
+                    LabeledContent {
+                        Button("Open Login Items…") { LoginItem.openSystemSettings() }
+                    } label: {
+                        Label("Pip is switched off in Login Items", systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                    }
+                }
                 Toggle("macOS System Notifications", isOn: $notificationsEnabled)
                     .onChange(of: notificationsEnabled) { _, on in
                         if on {
@@ -44,13 +53,20 @@ struct GeneralSettings: View {
                         }
                     }
                 LabeledContent("Preview") {
-                    Button("Play Demo", action: runDemo)
+                    HStack {
+                        Button("Welcome Tour", action: showWelcome)
+                        Button("Play Demo", action: runDemo)
+                    }
                 }
             } footer: {
                 if let loginError {
                     Text(loginError).foregroundStyle(.red)
+                } else {
+                    Text("Pip starts when you log in, so it's back in the notch after a restart.")
                 }
             }
+
+            DisplaySection()
 
             Section {
                 Picker("Show limits", selection: $limitDisplay) {
@@ -119,6 +135,70 @@ struct GeneralSettings: View {
         .formStyle(.grouped)
         .frame(width: paneWidth)
         .fixedSize(horizontal: false, vertical: true)
+        .onAppear(perform: refreshLoginStatus)
+        // The user may have flipped it in System Settings while this window was open.
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            refreshLoginStatus()
+        }
+    }
+
+    private func refreshLoginStatus() {
+        loginStatus = LoginItem.status
+        if openAtLogin != (loginStatus != .off) { openAtLogin = loginStatus != .off }
+    }
+}
+
+/// Which display the notch sits on, for people with an external monitor.
+struct DisplaySection: View {
+    @AppStorage(NotchDisplay.key) private var display = NotchDisplay.automatic.rawValue
+    @State private var screens: [(uuid: String, name: String)] = DisplaySection.connected()
+
+    private static func connected() -> [(uuid: String, name: String)] {
+        NSScreen.screens.compactMap { screen in screen.displayUUID.map { ($0, screen.localizedName) } }
+    }
+
+    private var savedDisplayMissing: Bool {
+        if case .display(let uuid) = NotchDisplay(rawValue: display) {
+            return !screens.contains { $0.uuid == uuid }
+        }
+        return false
+    }
+
+    var body: some View {
+        Section {
+            Picker("Show the notch on", selection: $display) {
+                Text("Automatic").tag(NotchDisplay.automatic.rawValue)
+                Text("Primary display").tag(NotchDisplay.primary.rawValue)
+                Text("Display with the pointer").tag(NotchDisplay.followPointer.rawValue)
+                if screens.count > 1 || savedDisplayMissing {
+                    Divider()
+                    ForEach(screens, id: \.uuid) { screen in
+                        Text(screen.name).tag(screen.uuid)
+                    }
+                    if savedDisplayMissing {
+                        Text("Saved display (not connected)").tag(display)
+                    }
+                }
+            }
+        } header: {
+            Text("Display")
+        } footer: {
+            Text(footer)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)) { _ in
+            screens = Self.connected()
+        }
+    }
+
+    private var footer: String {
+        switch NotchDisplay(rawValue: display) {
+        case .automatic: "Uses your MacBook's notch when the lid is open, and the primary display when it's closed."
+        case .primary: "The display with the menu bar in System Settings → Displays."
+        case .followPointer: "The notch moves to whichever display you're working on."
+        case .display: savedDisplayMissing
+            ? "That display isn't connected, so Pip uses the automatic choice until it's back."
+            : "Pip remembers this display and returns to it when you plug it back in."
+        }
     }
 }
 
