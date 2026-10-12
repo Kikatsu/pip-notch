@@ -52,6 +52,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         do {
             try server.start()
+        } catch SocketServer.ServerError.alreadyRunning {
+            // A second copy (say, another build) would show a notch that never gets events.
+            NSLog("Pip: another Pip is already running; quitting this one")
+            NSApp.terminate(nil)
+            return
         } catch {
             NSLog("Pip: could not open socket at \(server.path): \(error)")
         }
