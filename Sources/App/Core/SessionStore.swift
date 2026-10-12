@@ -13,6 +13,9 @@ final class SessionStore: ObservableObject {
     static let staleAfter: TimeInterval = 3 * 60 * 60
     /// Editor sessions (Cursor, Antigravity) send no end event; quiet ones are dropped after this.
     static let ideQuietAfter: TimeInterval = 30 * 60
+    /// Events for a session that ended this recently are stragglers: each hook runs its own bridge
+    /// process, so a quick session's SessionStart can arrive after its SessionEnd.
+    static let endedGrace: TimeInterval = 5
 
     @Published private(set) var sessions: [String: AgentSession] = [:]
     @Published private(set) var approvals: [PendingApproval] = []
@@ -28,6 +31,7 @@ final class SessionStore: ObservableObject {
     static let inactiveStates: Set<SessionState> = [.idle, .finished, .error, .rateLimited]
 
     private var responders: [UUID: (ApprovalDecision) -> Void] = [:]
+    private var recentlyEnded: [String: Date] = [:]
     private let isProcessAlive: (pid_t) -> Bool
     private let hostName: (HookEnvelope) -> String?
     private let gitBranch: (String) -> String?
@@ -88,6 +92,12 @@ final class SessionStore: ObservableObject {
         now = time
         if event.eventName == "SessionEnd" {
             endSession(event.sessionID)
+            recentlyEnded[event.sessionID] = time
+            return nil
+        }
+        // Drop stragglers so they don't bring an ended session back. Blocking events still go
+        // through, since the agent is waiting for an answer.
+        if reply == nil, let ended = recentlyEnded[event.sessionID], time.timeIntervalSince(ended) < Self.endedGrace {
             return nil
         }
         var createdApproval: UUID?
@@ -201,6 +211,7 @@ final class SessionStore: ObservableObject {
     /// Advances time-based state: finished and error moods fade, dead sessions go away.
     func tick(at time: Date = Date()) {
         now = time
+        recentlyEnded = recentlyEnded.filter { time.timeIntervalSince($0.value) < Self.endedGrace }
         for (id, session) in sessions {
             let quiet = time.timeIntervalSince(session.updatedAt)
             if let pid = session.pid, !isProcessAlive(pid) {

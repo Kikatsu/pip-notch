@@ -20,7 +20,7 @@
   <img src="docs/images/states.gif" alt="Pip's eyes: working, needs you, error, done" width="720">
 </p>
 
-Pip supports 32 AI coding agents and their extensions inside VS Code, Cursor and other editors. **Claude Code, Codex, Antigravity CLI and Cursor are tested.** The rest are **experimental**: they're built from each agent's hook format but haven't been checked against a real install yet. If one doesn't work for you, please [open an issue](https://github.com/Kikatsu/pip-notch/issues/new/choose).
+Pip supports 32 AI coding agents and their extensions inside VS Code, Cursor and other editors. **Claude Code, Codex, Antigravity CLI, Cursor, Copilot CLI, OpenCode and Pi are tested.** The rest are **experimental**: they're built from each agent's hook format but haven't been checked against a real install yet. If one doesn't work for you, please [open an issue](https://github.com/Kikatsu/pip-notch/issues/new/choose).
 
 > [!NOTE]
 > **Beta (0.1.0).** Pip isn't signed with an Apple Developer ID yet, so the recommended way to run it is to [build it from source](#install). If you download a prebuilt `Pip.app`, see [Running a downloaded build](#running-a-downloaded-build).
@@ -152,7 +152,7 @@ When connecting, Pip copies its `pip-bridge` helper to `~/Library/Application Su
 | Antigravity CLI | Tested | `~/.gemini/config/hooks.json` | Status and tools for the app and `agy` CLI |
 | Cursor | Tested | `~/.cursor/hooks.json` | Status, tools and replies for the app, `cursor-agent` and Grok Bot |
 | Trae | Experimental | `~/.trae/hooks.json` | Status, commands, edits and replies from Trae IDE |
-| OpenCode | Experimental | `~/.config/opencode/plugins/pip.js` | Status, tools; "needs you" on permission prompts |
+| OpenCode | Tested | `~/.config/opencode/plugins/pip.js` | Status, tools; "needs you" on permission prompts |
 | MiMoCode | Experimental | `~/.mimocode/settings.json` | Status, tools, approvals from the notch |
 | Droid | Experimental | `~/.factory/hooks.json`, else `~/.factory/settings.json` | Status, tools; "needs you" on permission prompts |
 | Devin | Experimental | `~/.devin/hooks.json` | Status, tools, approvals from the notch |
@@ -165,13 +165,13 @@ When connecting, Pip copies its `pip-bridge` helper to `~/Library/Application Su
 | DeepSeek | Experimental | `~/.deepseek/settings.json` | Status, tools, replies |
 | DeepSeek Harness (`dsh`) | Experimental | `~/.dsh/settings.json` | Harness testbed status, tools, approvals from the notch |
 | Mistral Vibe | Experimental | `~/.vibe/hooks.toml` | Status and replies for Mistral Vibe |
-| Copilot CLI | Experimental | `~/.copilot/hooks/pip.json` | Status, tools; "needs you" on permission prompts |
+| Copilot CLI | Tested | `~/.copilot/hooks/pip.json` | Status, tools; "needs you" on permission prompts |
 | CodeBuddy | Experimental | `~/.codebuddy/settings.json` | Companion status, tools, replies |
 | WorkBuddy | Experimental | `~/.workbuddy/settings.json` | Assistant status, tools, replies |
-| Kiro CLI | Experimental | `~/.kiro/hooks/pip.json` | Status, tools, replies (Kiro CLI 3+) |
+| Kiro CLI | Not working yet | `~/.kiro/hooks/pip.json` | Kiro CLI 2.29 (the current release) only reads hooks from agent configs in `~/.kiro/agents/`, so these hooks don't load yet |
 | Hermes | Experimental | `~/.hermes/hooks.json` | Agent status, tools, replies |
-| Amp | Experimental | `~/.amp/settings.json` | Agent status, tools, replies |
-| Pi Agent | Experimental | `~/.pi/agent/extensions/pip.ts` | Status, tools, replies |
+| Amp | Experimental | `~/.config/amp/settings.json` | Agent status, tools, replies |
+| Pi Agent | Tested | `~/.pi/agent/extensions/pip.ts` | Status, tools, replies |
 | Oh My Pi | Experimental | `~/.ohmypi/extensions/pip.ts` | Companion status, tools, replies |
 | Gajae Code | Experimental | `~/.gajaecode/settings.json` | Agent status, tools, replies |
 | Augment | Experimental | `~/.augment/settings.json` | Status, tools and replies for `auggie` |

@@ -100,6 +100,21 @@ final class SessionStoreTests: XCTestCase {
         XCTAssertEqual(store.orderedSessions.first?.id, "b")
     }
 
+    func testEventsArrivingAfterSessionEndDontReviveIt() {
+        let store = SessionStore()
+        // A quick session whose hooks raced: the end landed first.
+        store.handle(event("SessionEnd", session: "quick"), at: t0)
+        store.handle(event("UserPromptSubmit", session: "quick"), at: t0.addingTimeInterval(0.1))
+        store.handle(event("SessionStart", session: "quick"), at: t0.addingTimeInterval(0.2))
+        XCTAssertNil(store.sessions["quick"])
+
+        // Once the grace period has passed, the same id can start again (e.g. a resumed session).
+        let later = t0.addingTimeInterval(SessionStore.endedGrace + 1)
+        store.tick(at: later)
+        store.handle(event("SessionStart", session: "quick"), at: later)
+        XCTAssertNotNil(store.sessions["quick"])
+    }
+
     func testSessionEndAndDeadProcessesRemoveSessions() {
         var alive = true
         let store = SessionStore(isProcessAlive: { _ in alive })

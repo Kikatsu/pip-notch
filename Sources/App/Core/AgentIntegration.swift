@@ -406,12 +406,13 @@ struct AgentIntegration: Identifiable {
             ),
             AgentIntegration(
                 agent: .amp,
-                configURL: at(".amp/settings.json"),
+                // Global settings; `.amp/settings.json` is Amp's per-project file.
+                configURL: at(".config/amp/settings.json"),
                 format: .claudeStyle([
                     ("SessionStart", .async), ("SessionEnd", .async), ("UserPromptSubmit", .async),
                     ("PreToolUse", .async), ("PostToolUse", .async), ("Stop", .async),
                 ]),
-                detectPaths: [at(".amp").path, at(".local/bin/amp").path, "/opt/homebrew/bin/amp"],
+                detectPaths: [at(".config/amp").path, at(".amp").path, at(".local/bin/amp").path, "/opt/homebrew/bin/amp"],
                 note: "Amp agent. Status and replies."
             ),
             AgentIntegration(
