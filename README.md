@@ -148,7 +148,7 @@ When connecting, Pip copies its `pip-bridge` helper to `~/Library/Application Su
 | Claude Code | Tested | `~/.claude/settings.json` | Status, tools, approvals from the notch |
 | Codex | Tested | `~/.codex/hooks.json` | Status, tools, approvals from the notch. Click **Trust in Codex** in Settings once. |
 | ZCode | Experimental | `~/.zcode/settings.json` | Status, tools, approvals from the notch |
-| Gemini CLI | Experimental | `~/.gemini/settings.json` | Status, tools, replies; "needs you" when a tool prompt is waiting |
+| Gemini CLI | Experimental | `~/.gemini/settings.json` | Status, tools, replies; "needs you" when a tool prompt is waiting. Needs a Gemini API key: Google no longer lets free personal accounts sign in to Gemini CLI (it points them to Antigravity). |
 | Antigravity CLI | Tested | `~/.gemini/config/hooks.json` | Status and tools for the app and `agy` CLI |
 | Cursor | Tested | `~/.cursor/hooks.json` | Status, tools and replies for the app, `cursor-agent` and Grok Bot |
 | Trae | Experimental | `~/.trae/hooks.json` | Status, commands, edits and replies from Trae IDE |
@@ -161,7 +161,7 @@ When connecting, Pip copies its `pip-bridge` helper to `~/Library/Application Su
 | Qwen | Experimental | `~/.qwen/settings.json` | Status, tools, replies; "needs you" on permission prompts |
 | QwenWork | Experimental | `~/.qwenwork/settings.json` | Workspace status, tools, replies |
 | Grok Build | Experimental | `~/.grok/hooks/pip.json` | Status and replies for xAI's Grok Build |
-| Kimi Code | Experimental | `~/.kimi-code/config.toml` | Status, tools, replies |
+| Kimi Code | Experimental | `~/.kimi-code/config.toml` | Status, tools, replies. Shows up only once you're logged in: Kimi starts no session until a model is set. |
 | DeepSeek | Experimental | `~/.deepseek/settings.json` | Status, tools, replies |
 | DeepSeek Harness (`dsh`) | Experimental | `~/.dsh/cordis.patch.yml` + `~/.dsh/pip-hooks.json` | Status, tools and replies. dsh's hook bridge has no approval event, so approvals stay in dsh |
 | Mistral Vibe | Experimental | `~/.vibe/hooks.toml` | Status and replies for Mistral Vibe |
