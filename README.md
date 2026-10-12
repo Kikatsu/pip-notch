@@ -147,7 +147,7 @@ When connecting, Pip copies its `pip-bridge` helper to `~/Library/Application Su
 | --- | --- | --- | --- |
 | Claude Code | Tested | `~/.claude/settings.json` | Status, tools, approvals from the notch |
 | Codex | Tested | `~/.codex/hooks.json` | Status, tools, approvals from the notch. Click **Trust in Codex** in Settings once. |
-| ZCode | Experimental | `~/.zcode/settings.json` | Status, tools, approvals from the notch |
+| ZCode (Z.ai, GLM) | Experimental | `~/.zcode/cli/config.json` | Status, tools, approvals from the notch. Pip turns on `hooks.enabled`, which ZCode needs to run any hook. |
 | Gemini CLI | Experimental | `~/.gemini/settings.json` | Status, tools, replies; "needs you" when a tool prompt is waiting. Needs a Gemini API key: Google no longer lets free personal accounts sign in to Gemini CLI (it points them to Antigravity). |
 | Antigravity CLI | Tested | `~/.gemini/config/hooks.json` | Status and tools for the app and `agy` CLI |
 | Cursor | Tested | `~/.cursor/hooks.json` | Status, tools and replies for the app, `cursor-agent` and Grok Bot |

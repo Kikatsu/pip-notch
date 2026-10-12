@@ -15,6 +15,9 @@ struct AgentIntegration: Identifiable {
     enum Format {
         /// `{"hooks": {Event: [{"matcher"?, "hooks": [{"type","command",…}]}]}}`: Claude Code and Codex.
         case claudeStyle([(event: String, mode: Mode)])
+        /// Claude-style groups under `{"hooks": {"enabled": true, "events": {…}}}`: ZCode, which
+        /// runs no hook unless `enabled` is set.
+        case zcode([(event: String, mode: Mode)])
         /// `{"version"?, "hooks": {event: [{"command", …extras}]}}`: Cursor (version 1) and Windsurf.
         case flat(events: [String], version: Int?, extras: [String: Any])
         /// `{"pip": {"enabled", Event: [...]}}`: Antigravity.
@@ -287,12 +290,12 @@ struct AgentIntegration: Identifiable {
             ),
             AgentIntegration(
                 agent: .zcode,
-                configURL: at(".zcode/settings.json"),
-                format: .claudeStyle([
-                    ("SessionStart", .async), ("SessionEnd", .async), ("UserPromptSubmit", .async),
+                // Only the user config runs hooks; project files and ~/.zcode/settings.json don't.
+                configURL: at(".zcode/cli/config.json"),
+                format: .zcode([
+                    ("SessionStart", .async), ("UserPromptSubmit", .async),
                     ("PreToolUse", .async), ("PostToolUse", .async), ("PostToolUseFailure", .async),
-                    ("PermissionRequest", .blocking(timeout: 600)), ("Notification", .async),
-                    ("Stop", .async), ("StopFailure", .async),
+                    ("PermissionRequest", .blocking(timeout: 600)), ("Stop", .async),
                 ]),
                 detectPaths: [at(".zcode").path, "/Applications/ZCode.app", at(".local/bin/zcode").path, "/opt/homebrew/bin/zcode"],
                 note: "Approvals in the notch."
@@ -457,15 +460,12 @@ enum HookConfig {
         var result = removing(format, from: config)
         switch format {
         case .claudeStyle(let events):
+            result["hooks"] = adding(events, agent: agent, bridgePath: bridgePath, to: result["hooks"] as? [String: Any] ?? [:])
+
+        case .zcode(let events):
             var hooks = result["hooks"] as? [String: Any] ?? [:]
-            for (event, mode) in events {
-                var handler: [String: Any] = ["type": "command", "command": command(bridgePath: bridgePath, agent: agent)]
-                switch mode {
-                case .async: handler["async"] = true
-                case .blocking(let timeout), .sync(let timeout): handler["timeout"] = timeout
-                }
-                hooks[event] = (hooks[event] as? [[String: Any]] ?? []) + [["hooks": [handler]]]
-            }
+            hooks["enabled"] = true
+            hooks["events"] = adding(events, agent: agent, bridgePath: bridgePath, to: hooks["events"] as? [String: Any] ?? [:])
             result["hooks"] = hooks
 
         case .flat(let events, let version, let extras):
@@ -499,19 +499,16 @@ enum HookConfig {
         var result = config
         switch format {
         case .claudeStyle:
+            guard let hooks = config["hooks"] as? [String: Any] else { return config }
+            let kept = removingPip(from: hooks)
+            result["hooks"] = kept.isEmpty ? nil : kept
+
+        case .zcode:
             guard var hooks = config["hooks"] as? [String: Any] else { return config }
-            for (event, value) in hooks {
-                guard let groups = value as? [[String: Any]] else { continue }
-                let kept: [[String: Any]] = groups.compactMap { group in
-                    guard let handlers = group["hooks"] as? [[String: Any]] else { return group }
-                    let remaining = handlers.filter { !containsPip($0) }
-                    if remaining.isEmpty { return nil }
-                    var copy = group
-                    copy["hooks"] = remaining
-                    return copy
-                }
-                hooks[event] = kept.isEmpty ? nil : kept
-            }
+            let events = removingPip(from: hooks["events"] as? [String: Any] ?? [:])
+            hooks["events"] = events.isEmpty ? nil : events
+            // `enabled` alone is what Pip added; anything else in the block is the user's.
+            if hooks.keys.allSatisfy({ $0 == "enabled" }) { hooks = [:] }
             result["hooks"] = hooks.isEmpty ? nil : hooks
 
         case .flat:
@@ -533,6 +530,38 @@ enum HookConfig {
             break
         }
         return result
+    }
+
+    /// Appends one Claude-style group per event, `{Event: [{"hooks": [handler]}]}`.
+    private static func adding(_ events: [(event: String, mode: AgentIntegration.Mode)], agent: AgentKind, bridgePath: String, to hooks: [String: Any]) -> [String: Any] {
+        var hooks = hooks
+        for (event, mode) in events {
+            var handler: [String: Any] = ["type": "command", "command": command(bridgePath: bridgePath, agent: agent)]
+            switch mode {
+            case .async: handler["async"] = true
+            case .blocking(let timeout), .sync(let timeout): handler["timeout"] = timeout
+            }
+            hooks[event] = (hooks[event] as? [[String: Any]] ?? []) + [["hooks": [handler]]]
+        }
+        return hooks
+    }
+
+    /// Drops Pip's handlers from Claude-style groups, and groups and events left empty.
+    private static func removingPip(from hooks: [String: Any]) -> [String: Any] {
+        var hooks = hooks
+        for (event, value) in hooks {
+            guard let groups = value as? [[String: Any]] else { continue }
+            let kept: [[String: Any]] = groups.compactMap { group in
+                guard let handlers = group["hooks"] as? [[String: Any]] else { return group }
+                let remaining = handlers.filter { !containsPip($0) }
+                if remaining.isEmpty { return nil }
+                var copy = group
+                copy["hooks"] = remaining
+                return copy
+            }
+            hooks[event] = kept.isEmpty ? nil : kept
+        }
+        return hooks
     }
 
     /// True if any string anywhere in `value` points at the bridge.

@@ -8,6 +8,7 @@ All notable changes to Pip are documented here. The format is based on [Keep a C
 
 - Amp: hooks now go to Amp's global `~/.config/amp/settings.json`. `~/.amp/settings.json` is a per-project file, so Amp never loaded them.
 - DeepSeek Harness: dsh never reads `~/.dsh/settings.json`, so its hooks never ran. Pip now mounts dsh's own Claude-hooks bridge from `~/.dsh/cordis.patch.yml` and points it at `~/.dsh/pip-hooks.json`. Approvals stay in dsh, which has no approval hook.
+- ZCode (Z.ai's GLM agent): hooks now go to `~/.zcode/cli/config.json` under `hooks.events` with `hooks.enabled` turned on. ZCode runs hooks only from there, so they never ran before.
 - Events that arrive just after a session ends (each hook runs its own bridge process) no longer bring the session back as a ghost.
 
 ### Tested against real installs
