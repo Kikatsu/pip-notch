@@ -1,0 +1,26 @@
+Pip 0.1.0 (beta)
+A notch companion that shows what your AI coding agents are doing.
+
+Needs: macOS 14 (Sonoma) or later. Works on Apple Silicon and Intel Macs.
+
+INSTALL
+1. Drag Pip.app into your Applications folder.
+2. Double-click it. macOS will say Pip "can't be opened" because it isn't
+   signed by an Apple-registered developer yet. Click Done (or OK).
+3. Open System Settings > Privacy & Security, scroll down, and click
+   "Open Anyway" next to the message about Pip. Confirm with your password.
+4. Pip now opens normally. Look for the eyes in your menu bar and notch.
+
+OR, from Terminal (one command, same result):
+   xattr -dr com.apple.quarantine /Applications/Pip.app
+
+FIRST RUN
+- Pip connects to the AI coding agents it finds on your Mac (Claude Code,
+  Codex, Cursor and others) by adding hooks to their config files. It keeps
+  a backup of each file as <file>.pip-backup.
+- To stop that, open Settings from the eyes in the menu bar and turn off
+  "Connect agents automatically", or press Disconnect next to an agent.
+- The first time you click a session in iTerm2 or Terminal, macOS asks to
+  let Pip control it. Allow it so Pip can jump to the right window.
+
+Try Settings > "Preview All States" to see everything Pip can show.

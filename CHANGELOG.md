@@ -4,6 +4,12 @@ All notable changes to Pip are documented here. The format is based on [Keep a C
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-12
+
+### Added
+
+- Prebuilt download on GitHub Releases (universal, Apple Silicon and Intel).
+
 ### Fixed
 
 - Amp: hooks now go to Amp's global `~/.config/amp/settings.json`. `~/.amp/settings.json` is a per-project file, so Amp never loaded them.

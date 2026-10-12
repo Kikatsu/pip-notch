@@ -66,7 +66,18 @@ Real captures from Pip running on macOS, using its built-in demo (`Pip --demo`),
 
 ## Install
 
-### Requirements
+### Download (easiest)
+
+1. Download **Pip-x.y.z.zip** from the [latest release](https://github.com/Kikatsu/pip-notch/releases/latest) and unzip it.
+2. Drag **Pip.app** into your Applications folder.
+3. Open it. Pip isn't signed by an Apple-registered developer yet, so macOS blocks the first launch. Open **System Settings → Privacy & Security**, scroll down and click **Open Anyway** next to the message about Pip. Or run this in Terminal:
+   ```sh
+   xattr -dr com.apple.quarantine /Applications/Pip.app
+   ```
+
+Needs macOS 14 Sonoma or later. Works on Apple Silicon and Intel Macs.
+
+### Requirements (build from source)
 
 - A Mac running **macOS 14 Sonoma or later**. A notch isn't required; on Macs and displays without one, Pip draws its own at the top of the screen.
 - **Xcode 16 or later** (from the App Store or [developer.apple.com](https://developer.apple.com/xcode/)). Open it once after installing so it can finish setting up.
