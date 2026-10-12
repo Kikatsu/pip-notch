@@ -45,13 +45,23 @@ Pip supports 32 AI coding agents and their extensions inside VS Code, Cursor and
 
 | | |
 | --- | --- |
-| <img src="docs/images/states.jpg" alt="Four states"> | **Status at a glance.** Working, needs you, error and done each have their own eyes and colour, so you can tell what's going on without opening anything. |
-| <img src="docs/images/approve.jpg" alt="Approve from the notch"> | **Approve it from the notch.** Allow or deny tool requests without leaving your editor. Risky commands such as `rm -rf` are flagged. |
-| <img src="docs/images/review.jpg" alt="Review plans"> | **Review plans.** Full Markdown rendering, one-click feedback chips, and **Approve plan** with `⌃⌥↩`. |
+| <img src="docs/images/real-multi-working.png" alt="Pip list of four agents: Codex done, three still working" width="240"> | **Status at a glance.** Working, needs you, error and done each have their own eyes and colour, so you can tell what's going on without opening anything. |
+| <img src="docs/images/real-needs-approval.png" alt="Claude Code asks to run rm -rf with a high-risk warning, with Allow and Deny buttons" width="240"> | **Approve it from the notch.** Allow or deny tool requests without leaving your editor. Risky commands such as `rm -rf` are flagged. |
+| <img src="docs/images/real-plan-review.png" alt="Codex plan ready for review with feedback chips and Approve plan" width="240"> | **Review plans.** Full Markdown rendering, one-click feedback chips, and **Approve plan** with `⌃⌥↩`. |
 | <img src="docs/images/questions.jpg" alt="Answer questions"> | **Answer questions.** Pick an option with `⌘1` `⌘2` `⌘3`, or type your own answer. |
 | <img src="docs/images/personalities.jpg" alt="Four personalities"> | **Four personalities.** Living notch, Burrow blob, Pixel bit or Minimal. You can switch at any time. |
 | <img src="docs/images/agents.jpg" alt="32 agents"> | **32 agents, one notch.** Claude Code, Codex, Cursor, Gemini CLI, Copilot CLI, OpenCode, Windsurf and many more. |
 | <img src="docs/images/limits.jpg" alt="Usage limits"> | **Know your limits.** Claude Code and Codex plan usage, with the time until each limit resets. |
+
+## Screenshots
+
+Real captures from Pip running on macOS, using its built-in demo (`Pip --demo`), so the sessions are sample data.
+
+| Screenshot | What it shows |
+| --- | --- |
+| <img src="docs/images/real-multi-working.png" alt="Session list with four agents" width="240"> | **Several agents at once.** Four sessions from different tools are listed together: Codex has finished (green dot, last message "Added a dark mode toggle…"), while Antigravity CLI, Cursor and Claude Code are still working, each with its current tool and elapsed time. |
+| <img src="docs/images/real-needs-approval.png" alt="Approval card for a risky command" width="240"> | **Needs you, mixed characters.** A Claude Code session asks to run `rm -rf dist && npm run build`. Pip flags it with a red "High Risk" warning, and you can allow or deny from the notch. Other agents keep working in the background. |
+| <img src="docs/images/real-plan-review.png" alt="One Codex plan under review" width="240"> | **One character, one plan.** Only the Codex session is waiting. The plan renders as Markdown, with feedback chips, a "type to revise" field and **Approve plan**. |
 
 ## Install
 
