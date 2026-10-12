@@ -23,7 +23,7 @@
 Pip supports 32 AI coding agents and their extensions inside VS Code, Cursor and other editors. **Claude Code, Codex, Antigravity CLI, Cursor, Copilot CLI, OpenCode and Pi are tested.** The rest are **experimental**: they're built from each agent's hook format but haven't been checked against a real install yet. If one doesn't work for you, please [open an issue](https://github.com/Kikatsu/pip-notch/issues/new/choose).
 
 > [!NOTE]
-> **Beta (0.1.0).** Pip isn't signed with an Apple Developer ID yet, so the recommended way to run it is to [build it from source](#install). If you download a prebuilt `Pip.app`, see [Running a downloaded build](#running-a-downloaded-build).
+> **Beta.** Install with one Homebrew command, [download the app](#download), or [build it from source](#build-from-source). Pip isn't notarized by Apple yet; Homebrew handles that for you, and a manual download needs one extra click the first time (see [Download](#download)).
 
 ## Contents
 
@@ -66,7 +66,15 @@ Real captures from Pip running on macOS, using its built-in demo (`Pip --demo`),
 
 ## Install
 
-### Download (easiest)
+### Homebrew (recommended)
+
+```sh
+brew install --cask kikatsu/tap/pip-notch
+```
+
+That's it: Pip lands in your Applications folder and opens without the macOS warning. Update with `brew upgrade --cask pip-notch`.
+
+### Download
 
 1. Download **Pip-x.y.z.zip** from the [latest release](https://github.com/Kikatsu/pip-notch/releases/latest) and unzip it.
 2. Drag **Pip.app** into your Applications folder.
@@ -79,14 +87,18 @@ Needs macOS 14 Sonoma or later. Works on Apple Silicon and Intel Macs.
 
 Pip checks GitHub once a day and tells you in the menu bar and with a notification when a new version is out. To get an email too, click **Watch → Custom → Releases** on this repo.
 
-### Requirements (build from source)
+### Build from source
+
+For contributors, or if you'd rather build it yourself.
+
+#### Requirements
 
 - A Mac running **macOS 14 Sonoma or later**. A notch isn't required; on Macs and displays without one, Pip draws its own at the top of the screen.
 - **Xcode 16 or later** (from the App Store or [developer.apple.com](https://developer.apple.com/xcode/)). Open it once after installing so it can finish setting up.
 - **[XcodeGen](https://github.com/yonaskolb/XcodeGen)**, which generates the Xcode project from `project.yml`.
 - [Homebrew](https://brew.sh) is the easiest way to install XcodeGen.
 
-### Build from source
+#### Steps
 
 **1. Install the tools**
 
@@ -122,7 +134,7 @@ Pip lives in the notch and the menu bar (the little eyes icon). It has no Dock i
 > [!TIP]
 > Prefer Xcode? Run `xcodegen generate`, then `open Pip.xcodeproj` and press **⌘R**.
 
-### Running a downloaded build
+#### Running a downloaded build
 
 Prebuilt builds are ad-hoc signed rather than notarized, so macOS will say `Pip.app` "is damaged" or "can't be opened". Move it to `/Applications`, then clear the download flag once:
 
@@ -131,6 +143,10 @@ xattr -dr com.apple.quarantine /Applications/Pip.app
 ```
 
 ### Updating
+
+- **Homebrew:** `brew upgrade --cask pip-notch`
+- **Download:** get the new zip from [Releases](https://github.com/Kikatsu/pip-notch/releases/latest) and replace `Pip.app` in Applications. Pip shows **Update Available** in its menu bar menu when there's one.
+- **From source:**
 
 ```sh
 cd pip-notch
@@ -324,8 +340,8 @@ It shouldn't: the bridge exits immediately with a neutral answer when Pip isn't 
 ## Uninstall
 
 1. Open **Settings → Agents** and **Disconnect** each connected agent. This removes only Pip's hooks and restores your previous Claude Code status line.
-2. Quit Pip from the menu bar eyes (**Quit Pip**).
-3. Delete the app and its data:
+2. If you installed with Homebrew, run `brew uninstall --cask --zap pip-notch` and you're done (`--zap` also removes Pip's settings and helper).
+3. Otherwise, quit Pip from the menu bar eyes (**Quit Pip**) and delete the app and its data:
 
 ```sh
 rm -rf /Applications/Pip.app

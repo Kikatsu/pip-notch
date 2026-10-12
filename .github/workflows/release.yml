@@ -51,5 +51,26 @@ jobs:
             gh release upload "$GITHUB_REF_NAME" "${{ steps.package.outputs.zip }}" --clobber
           else
             gh release create "$GITHUB_REF_NAME" "${{ steps.package.outputs.zip }}" \
-              --title "Pip $version (beta)" --prerelease --notes-file notes.md
+              --title "Pip $version (beta)" --notes-file notes.md
           fi
+
+      - name: Check out the Homebrew tap
+        if: github.ref_type == 'tag'
+        uses: actions/checkout@v4
+        with:
+          repository: Kikatsu/homebrew-tap
+          ssh-key: ${{ secrets.TAP_DEPLOY_KEY }}
+          path: homebrew-tap
+
+      - name: Update the Homebrew cask
+        if: github.ref_type == 'tag'
+        working-directory: homebrew-tap
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          sha=$(shasum -a 256 "$GITHUB_WORKSPACE/${{ steps.package.outputs.zip }}" | cut -d' ' -f1)
+          sed -i '' -e "s/^  version \".*\"/  version \"$version\"/" -e "s/^  sha256 \".*\"/  sha256 \"$sha\"/" Casks/pip-notch.rb
+          git diff --quiet && exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "pip-notch $version"
+          git push

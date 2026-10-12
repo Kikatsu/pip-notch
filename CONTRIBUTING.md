@@ -73,6 +73,13 @@ Please link the agent's hook documentation in your PR.
 - Update the README if you change something users see.
 - Add a line under **Unreleased** in [CHANGELOG.md](CHANGELOG.md).
 
+## Releasing
+
+1. Bump `CFBundleShortVersionString` (and `CFBundleVersion`) in `project.yml`, run `xcodegen generate`, and move **Unreleased** in [CHANGELOG.md](CHANGELOG.md) under a new version heading.
+2. Commit and push, then push a tag: `git tag v0.1.3 && git push origin v0.1.3`.
+
+The [Release workflow](.github/workflows/release.yml) builds a universal `Pip.app`, publishes the zip on GitHub Releases with the changelog section as notes, and updates the cask in [Kikatsu/homebrew-tap](https://github.com/Kikatsu/homebrew-tap). Running Pip apps notice the new version within a day. To build the zip locally, run `scripts/package-release.sh`.
+
 ## Reporting bugs
 
 Use the [issue templates](https://github.com/Kikatsu/pip-notch/issues/new/choose). For agent problems, include the agent's name and version, your macOS version, and the relevant part of the agent's hook config **with any tokens or keys removed**.
