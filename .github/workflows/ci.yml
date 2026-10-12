@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate project
+        run: xcodegen generate
+
+      - name: Build and test
+        run: |
+          set -o pipefail
+          xcodebuild -project Pip.xcodeproj -scheme Pip \
+            -derivedDataPath build/DerivedData \
+            -destination 'platform=macOS' \
+            test | tee build/xcodebuild.log | grep -E '^(Test Suite|Test Case.*(passed|failed)|\*\*|error:)' || true
+          grep -q '\*\* TEST SUCCEEDED \*\*' build/xcodebuild.log

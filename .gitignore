@@ -1,6 +1,47 @@
-*.xcodeproj/
-build/
-DerivedData/
+# macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+._*
+Icon?
+
+# Xcode (the project is generated from project.yml by XcodeGen)
+*.xcodeproj/
+*.xcworkspace/
 xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+DerivedData/
+build/
+*.xcresult
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+# Release bundles (attach these to GitHub Releases instead)
 dist/
+*.zip
+*.dmg
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*~
+
+# Node (promo video project)
+node_modules/
+npm-debug.log*
+
+# Local environment
+.env
+.env.*
+!.env.example

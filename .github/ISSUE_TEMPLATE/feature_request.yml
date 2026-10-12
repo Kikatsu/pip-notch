@@ -1,0 +1,20 @@
+name: Feature request
+description: Suggest an idea or a new agent.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like Pip to do?
+      description: Describe the problem or situation first, then the idea.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you've considered
+  - type: textarea
+    id: links
+    attributes:
+      label: Links
+      description: For a new agent, a link to its hook or plugin documentation.

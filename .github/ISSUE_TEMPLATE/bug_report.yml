@@ -1,0 +1,39 @@
+name: Bug report
+description: Something in Pip doesn't work as expected.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead? Screenshots or a screen recording help a lot.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Start Claude Code in iTerm2
+        2. Ask it to run a command
+        3. …
+  - type: input
+    id: pip-version
+    attributes:
+      label: Pip version
+      description: Settings → General → Version, or the commit you built from.
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version and Mac
+      placeholder: macOS 15.5, MacBook Pro 14" (M3)
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: "Optional: output of `log show --last 10m --predicate 'subsystem == \"com.kikatsu.pip\"'`"
+      render: text

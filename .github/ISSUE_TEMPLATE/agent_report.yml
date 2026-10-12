@@ -1,0 +1,46 @@
+name: Agent report
+description: An agent doesn't connect or show up correctly, or you've confirmed an experimental one works.
+labels: [agent]
+body:
+  - type: input
+    id: agent
+    attributes:
+      label: Agent
+      placeholder: Gemini CLI
+    validations:
+      required: true
+  - type: input
+    id: agent-version
+    attributes:
+      label: Agent version
+      placeholder: "0.12.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: result
+    attributes:
+      label: Result
+      options:
+        - It works (please mark it as tested)
+        - It doesn't connect
+        - It connects, but nothing shows in the notch
+        - Wrong state or missing information
+        - Something else
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: What you saw, and where the agent runs (terminal, VS Code, its own app…).
+  - type: textarea
+    id: config
+    attributes:
+      label: Hook config
+      description: The relevant part of the agent's config file after Pip connected. **Remove any tokens, keys or private paths.**
+      render: json
+  - type: input
+    id: pip-version
+    attributes:
+      label: Pip version and macOS version
+      placeholder: 0.1.0, macOS 15.5

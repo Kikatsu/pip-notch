@@ -1,27 +1,137 @@
-# Pip
+<p align="center">
+  <img src="docs/images/hero.jpg" alt="Pip: your AI agents, at a glance" width="100%">
+</p>
 
-A macOS notch companion that shows what your AI coding agents are doing. The notch itself has eyes: they scan while agents work, widen when one needs your approval, cross out on errors and squint happily when a task finishes.
+<p align="center">
+  <b>A macOS notch companion that shows what your AI coding agents are doing.</b><br>
+  The notch itself has eyes: they scan while agents work, widen when one needs your approval,<br>
+  cross out on errors and squint happily when a task finishes.
+</p>
 
-Supports 32 AI coding agents and their extensions inside VS Code, Cursor and other editors. **Claude Code, Codex, Antigravity CLI and Cursor are tested**; the rest are **experimental**: built from each agent's hook format but not yet checked against a real install. If one doesn't work for you, please open an issue.
+<p align="center">
+  <a href="https://github.com/Kikatsu/pip-notch/actions/workflows/ci.yml"><img src="https://github.com/Kikatsu/pip-notch/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <img src="https://img.shields.io/badge/macOS-14%2B-black?logo=apple" alt="macOS 14+">
+  <img src="https://img.shields.io/badge/Swift-SwiftUI-F05138?logo=swift&logoColor=white" alt="Swift">
+  <img src="https://img.shields.io/badge/agents-32-38BDF8" alt="32 agents">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT license"></a>
+</p>
 
-> **Beta (0.1.0).** Pip isn't signed with an Apple Developer ID yet, so the recommended way to run it is to build it from source (below). If you download a prebuilt `Pip.app`, macOS will say it's damaged or can't be opened; clear the download flag once with `xattr -dr com.apple.quarantine /Applications/Pip.app`.
+<p align="center">
+  <img src="docs/images/states.gif" alt="Pip's eyes: working, needs you, error, done" width="720">
+</p>
 
-## Build and run
+Pip supports 32 AI coding agents and their extensions inside VS Code, Cursor and other editors. **Claude Code, Codex, Antigravity CLI and Cursor are tested.** The rest are **experimental**: they're built from each agent's hook format but haven't been checked against a real install yet. If one doesn't work for you, please [open an issue](https://github.com/Kikatsu/pip-notch/issues/new/choose).
 
-Requires Xcode 16+ and [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`).
+> [!NOTE]
+> **Beta (0.1.0).** Pip isn't signed with an Apple Developer ID yet, so the recommended way to run it is to [build it from source](#install). If you download a prebuilt `Pip.app`, see [Running a downloaded build](#running-a-downloaded-build).
+
+## Contents
+
+- [Features](#features)
+- [Install](#install)
+- [First run](#first-run)
+- [Connecting agents](#connecting-agents)
+- [Usage limits](#usage-limits)
+- [Characters and sounds](#characters-and-sounds)
+- [Reviewing plans and questions](#reviewing-plans-and-questions)
+- [Keyboard shortcuts](#keyboard-shortcuts)
+- [Jumping to a session](#jumping-to-a-session)
+- [Troubleshooting](#troubleshooting)
+- [Uninstall](#uninstall)
+- [How it fits together](#how-it-fits-together)
+- [Contributing](#contributing)
+
+## Features
+
+| | |
+| --- | --- |
+| <img src="docs/images/states.jpg" alt="Four states"> | **Status at a glance.** Working, needs you, error and done each have their own eyes and colour, so you can tell what's going on without opening anything. |
+| <img src="docs/images/approve.jpg" alt="Approve from the notch"> | **Approve it from the notch.** Allow or deny tool requests without leaving your editor. Risky commands such as `rm -rf` are flagged. |
+| <img src="docs/images/review.jpg" alt="Review plans"> | **Review plans.** Full Markdown rendering, one-click feedback chips, and **Approve plan** with `⌃⌥↩`. |
+| <img src="docs/images/questions.jpg" alt="Answer questions"> | **Answer questions.** Pick an option with `⌘1` `⌘2` `⌘3`, or type your own answer. |
+| <img src="docs/images/personalities.jpg" alt="Four personalities"> | **Four personalities.** Living notch, Burrow blob, Pixel bit or Minimal. You can switch at any time. |
+| <img src="docs/images/agents.jpg" alt="32 agents"> | **32 agents, one notch.** Claude Code, Codex, Cursor, Gemini CLI, Copilot CLI, OpenCode, Windsurf and many more. |
+| <img src="docs/images/limits.jpg" alt="Usage limits"> | **Know your limits.** Claude Code and Codex plan usage, with the time until each limit resets. |
+
+## Install
+
+### Requirements
+
+- A Mac running **macOS 14 Sonoma or later**. A notch isn't required; on Macs and displays without one, Pip draws its own at the top of the screen.
+- **Xcode 16 or later** (from the App Store or [developer.apple.com](https://developer.apple.com/xcode/)). Open it once after installing so it can finish setting up.
+- **[XcodeGen](https://github.com/yonaskolb/XcodeGen)**, which generates the Xcode project from `project.yml`.
+- [Homebrew](https://brew.sh) is the easiest way to install XcodeGen.
+
+### Build from source
+
+**1. Install the tools**
+
+```sh
+xcode-select --install        # command line tools, if you don't have them yet
+brew install xcodegen
+```
+
+**2. Get the code**
+
+```sh
+git clone https://github.com/Kikatsu/pip-notch.git
+cd pip-notch
+```
+
+**3. Generate the Xcode project and build**
 
 ```sh
 xcodegen generate
-xcodebuild -project Pip.xcodeproj -scheme Pip -derivedDataPath build/DerivedData build
-open build/DerivedData/Build/Products/Debug/Pip.app
+xcodebuild -project Pip.xcodeproj -scheme Pip -configuration Release \
+  -derivedDataPath build/DerivedData build
 ```
 
-Add `--args --demo` to `open` (or choose **Preview All States** from the menu bar eyes) to play fake sessions from every agent through every state. `--args --settings` opens Settings on launch.
-
-Run the tests with:
+**4. Move it to Applications and open it**
 
 ```sh
-xcodebuild -project Pip.xcodeproj -scheme Pip -derivedDataPath build/DerivedData test
+cp -R build/DerivedData/Build/Products/Release/Pip.app /Applications/
+open /Applications/Pip.app
+```
+
+Pip lives in the notch and the menu bar (the little eyes icon). It has no Dock icon.
+
+> [!TIP]
+> Prefer Xcode? Run `xcodegen generate`, then `open Pip.xcodeproj` and press **⌘R**.
+
+### Running a downloaded build
+
+Prebuilt builds are ad-hoc signed rather than notarized, so macOS will say `Pip.app` "is damaged" or "can't be opened". Move it to `/Applications`, then clear the download flag once:
+
+```sh
+xattr -dr com.apple.quarantine /Applications/Pip.app
+```
+
+### Updating
+
+```sh
+cd pip-notch
+git pull
+xcodegen generate
+xcodebuild -project Pip.xcodeproj -scheme Pip -configuration Release -derivedDataPath build/DerivedData build
+osascript -e 'quit app "Pip"'
+rm -rf /Applications/Pip.app && cp -R build/DerivedData/Build/Products/Release/Pip.app /Applications/
+open /Applications/Pip.app
+```
+
+## First run
+
+1. **Open Pip.** It finds the agents installed on your Mac and connects them automatically (see [Connecting agents](#connecting-agents)).
+2. **Restart your agents.** Sessions that were already running before Pip connected won't have its hooks yet.
+3. **Codex only:** run `/hooks` inside Codex once and trust Pip's hooks.
+4. **Try it without an agent:** choose **Preview All States** from the menu bar eyes. This plays fake sessions from every agent through every state.
+5. **Allow notifications** if macOS asks. The first time you jump into iTerm2 or Terminal, macOS also asks for Automation permission so Pip can bring the right tab forward.
+6. **Optional:** open **Settings…** (from the menu bar eyes or the ⚙ in the notch) and turn on **Open at login** under General.
+
+Launch flags for development:
+
+```sh
+open Pip.app --args --demo        # play the demo sessions on launch
+open Pip.app --args --settings    # open Settings on launch
 ```
 
 ## Connecting agents
@@ -29,6 +139,9 @@ xcodebuild -project Pip.xcodeproj -scheme Pip -derivedDataPath build/DerivedData
 Pip connects every agent it finds automatically, at launch and every minute after, so agents you install later are picked up too. It also repairs hooks that an agent update removed. Pressing **Disconnect** in Settings keeps that agent off, and **Connect agents automatically** turns the whole behaviour off. Open **Settings…** (General, Agents, Appearance, Sounds, Shortcuts) from the eyes icon in the menu bar or the ⚙ in the notch.
 
 When connecting, Pip copies its `pip-bridge` helper to `~/Library/Application Support/Pip/bin/` and adds its hooks to that agent's config, saving your last version without Pip's hooks as `<file>.pip-backup` (later reconnects and repairs never overwrite it). **Disconnect** removes only Pip's hooks.
+
+<details>
+<summary><b>All 32 supported agents</b> (click to expand)</summary>
 
 | Agent | Status | Config file | What Pip shows |
 | --- | --- | --- | --- |
@@ -65,13 +178,23 @@ When connecting, Pip copies its `pip-bridge` helper to `~/Library/Application Su
 | Goose | Experimental | `~/.agents/plugins/pip/` | Status, tools and replies |
 | Windsurf | Experimental | `~/.codeium/windsurf/hooks.json` | Status, commands, edits and replies from Cascade |
 
+</details>
+
 Not supported yet: Zed's own agent has no hooks, and Zed doesn't run Claude Code hooks for its Claude integration (Codex and Gemini in Zed work through their own hooks). Cline's hook format couldn't be confirmed.
 
 The Claude Code and Codex editor extensions use the same hooks as their CLIs. Each session row shows where it runs ("Claude Code · VS Code", "Codex · Ghostty"), and clicking it opens that project's editor window.
 
-Only Claude Code's and Codex's `PermissionRequest` hooks wait for you, because only they fire exactly when the agent would otherwise ask you. Everything else runs in the background. If Pip isn't running, the bridge exits at once with the agent's neutral answer, so agents behave as if no hook were installed.
+Only Claude Code's and Codex's `PermissionRequest` hooks wait for you, because only they fire exactly when the agent would otherwise ask you. Everything else runs in the background. **If Pip isn't running, the bridge exits at once with the agent's neutral answer, so agents behave as if no hook were installed.**
 
-**Any other agent** with Claude-style hooks works too: point its hooks at `"~/Library/Application Support/Pip/bin/pip-bridge" my-agent` (Settings → Agents → Other Agents has a Copy button). It shows up in the notch as "My-agent". Pip also accepts common field spellings such as `sessionId`, `working_dir` and `toolName`.
+### Any other agent
+
+Any agent with Claude-style hooks works too. Point its hooks at:
+
+```sh
+"~/Library/Application Support/Pip/bin/pip-bridge" my-agent
+```
+
+Settings → Agents → Other Agents has a Copy button for this. The agent shows up in the notch as "My-agent". Pip also accepts common field spellings such as `sessionId`, `working_dir` and `toolName`.
 
 ## Usage limits
 
@@ -86,7 +209,6 @@ Other agents don't expose their limits locally. Settings → General → Usage L
 
 The character is interactive: its eyes follow your pointer as you approach the notch, it perks up (or wakes up) when the notch opens, giggles when you click its face, looks pleased when you allow a request and squints when you deny one.
 
-
 Settings has three characters, **Living notch** (the notch has eyes), **Burrow blob** and **Pixel bit**, plus **Minimal**: no character, just a small status dot (white while working, pulsing amber when an agent needs you, red on errors, green when done) and a face-free panel.
 
 Sounds come in four packs: **Pip** (bells and marimba), **Soft** (quiet glass and wood) and **Arcade** (8-bit blips) are synthesized by Pip itself, and **macOS** uses the alert sounds that ship with the system (Ping, Glass, Basso, Submarine). Any alert can use your own file instead (MP3, WAV, AIFF or M4A, up to 15 seconds); Pip keeps a copy in `~/Library/Application Support/Pip/Sounds`. Each alert can be switched off, and there's a master switch and a volume slider.
@@ -95,21 +217,21 @@ Sounds come in four packs: **Pip** (bells and marimba), **Soft** (quiet glass an
 
 When an agent finishes planning, the plan appears in the notch with full Markdown rendering (headings, code blocks with copy buttons, checklists, tables, blockquotes). You can expand the preview for full reading, click quick feedback chips (`+ Add tests`, `⚡ Simplify`, etc.), and type feedback to send changes directly back without leaving the notch. **Approve plan** (`⌃⌥↩`) starts execution.
 
-When an agent asks a question (Claude Code, Codex, Antigravity, and others), the notch presents the question and options styled as interactive cards with `⌘1`, `⌘2`, `⌘3` shortcuts, plus a field to type a custom answer directly without switching away. **Answer in terminal** remains available to jump to the session.
+When an agent asks a question (Claude Code, Codex, Antigravity, and others), the notch presents the question and options as interactive cards with `⌘1`, `⌘2`, `⌘3` shortcuts, plus a field to type a custom answer without switching away. **Answer in terminal** remains available to jump to the session.
 
 ## Keyboard shortcuts
 
-Work from any app (Settings → Shortcuts can turn them off):
+These work from any app (Settings → Shortcuts can turn them off):
 
 | Keys | Action |
 | --- | --- |
-| ⌃⌥Space | Open or close the notch |
-| ⌃⌥↩ | Allow the request, or approve the plan |
-| ⌃⌥⌫ | Deny the request, or keep planning |
-| ⌃⌥J | Go to the session that needs you most |
-| ⌃⌥M | Mute or unmute sounds |
+| `⌃⌥Space` | Open or close the notch |
+| `⌃⌥↩` | Allow the request, or approve the plan |
+| `⌃⌥⌫` | Deny the request, or keep planning |
+| `⌃⌥J` | Go to the session that needs you most |
+| `⌃⌥M` | Mute or unmute sounds |
 
-⌃⌥↩ and ⌃⌥⌫ are only claimed while a request is waiting.
+`⌃⌥↩` and `⌃⌥⌫` are only claimed while a request is waiting.
 
 ## Jumping to a session
 
@@ -124,18 +246,108 @@ Clicking a session focuses where it runs:
 
 The first jump into iTerm2 or Terminal asks for Automation permission.
 
+## Troubleshooting
+
+<details>
+<summary><b>An agent doesn't show up in the notch</b></summary>
+
+1. Open **Settings → Agents** and check that the agent says **Connected**. If not, press **Connect**.
+2. Restart the agent. Sessions started before Pip connected don't have its hooks.
+3. For Codex, run `/hooks` and trust Pip's hooks.
+4. Check that the bridge exists: `ls ~/Library/Application\ Support/Pip/bin/pip-bridge`.
+5. Look at Pip's logs: `log stream --predicate 'subsystem BEGINSWITH "com.kikatsu.pip"' --level debug`.
+
+If it still doesn't work and the agent is marked *Experimental*, please [report it](https://github.com/Kikatsu/pip-notch/issues/new?template=agent_report.yml). Include the agent's version and its hook config with any secrets removed.
+</details>
+
+<details>
+<summary><b>Codex is connected but never shows up</b></summary>
+
+Codex only runs hooks you've reviewed, and it skips untrusted ones without any error. Pip warns about this in Settings → Agents, in the menu bar menu and with a notification.
+
+1. Start `codex` and type `/hooks`.
+2. Trust Pip's hooks (they all run `…/Pip/bin/pip-bridge codex`).
+3. Quit Codex and start a new session.
+
+After a Codex update, check `/hooks` again: if your `~/.codex/config.toml` was reset, the trust goes with it.
+</details>
+
+<details>
+<summary><b>"Pip.app is damaged and can't be opened"</b></summary>
+
+This is Gatekeeper blocking an unnotarized download. Run `xattr -dr com.apple.quarantine /Applications/Pip.app`, or build from source.
+</details>
+
+<details>
+<summary><b>Clicking a session doesn't focus my terminal</b></summary>
+
+Allow Pip under **System Settings → Privacy & Security → Automation** (for iTerm2 / Terminal). If you said no the first time, reset it with `tccutil reset AppleEvents com.kikatsu.pip` and try again.
+</details>
+
+<details>
+<summary><b>Global shortcuts don't work</b></summary>
+
+Check that they're on in **Settings → Shortcuts** and that no other app has taken the same keys.
+</details>
+
+<details>
+<summary><b>My agent waits for a while when Pip is closed</b></summary>
+
+It shouldn't: the bridge exits immediately with a neutral answer when Pip isn't running. If you see a delay, please open an issue with the agent name and version.
+</details>
+
+## Uninstall
+
+1. Open **Settings → Agents** and **Disconnect** each connected agent. This removes only Pip's hooks and restores your previous Claude Code status line.
+2. Quit Pip from the menu bar eyes (**Quit Pip**).
+3. Delete the app and its data:
+
+```sh
+rm -rf /Applications/Pip.app
+rm -rf ~/Library/Application\ Support/Pip
+defaults delete com.kikatsu.pip 2>/dev/null
+```
+
+Your original agent configs are still saved next to each one as `<file>.pip-backup` if you ever need them.
+
 ## How it fits together
 
 ```
-Claude Code hook → pip-bridge (stdin JSON) → Unix socket → Pip.app
-                                     ↖ allow / deny ↙
+agent hook ──▶ pip-bridge (stdin JSON) ──▶ Unix socket ──▶ Pip.app
+                                  ◀── allow / deny ──
 ```
 
-- `Sources/Bridge`: the helper that hooks call.
-- `Sources/App/Core`: session state (`SessionStore`), per-agent payload adapters, socket server, hook installers, sounds, terminal jumping.
-- `Sources/App/Settings`: the Settings window.
-- `Sources/App/Notch`: the panel, notch geometry, hover tracking.
-- `Sources/App/Views`: the notch shape, the three characters and the panel content.
+```
+.
+├── project.yml              XcodeGen spec (the .xcodeproj is generated, not committed)
+├── Sources/
+│   ├── App/
+│   │   ├── Core/            session state (SessionStore), per-agent adapters, socket server,
+│   │   │                    hook installers, sounds, usage limits, terminal jumping
+│   │   ├── Notch/           the panel, notch geometry, hover tracking
+│   │   ├── Settings/        the Settings window
+│   │   └── Views/           the notch shape, the characters and the panel content
+│   ├── Bridge/              pip-bridge: the small helper that agent hooks call
+│   └── Shared/              code used by both the app and the bridge (paths, socket I/O)
+├── Tests/PipTests/          unit tests
+├── docs/images/             README screenshots
+└── video/                   Remotion source for the promo video (optional)
+```
+
+Pip talks to agents only through their local hook files and a Unix socket in `~/Library/Application Support/Pip/`. It makes no network requests and collects no telemetry.
+
+## Contributing
+
+Contributions are welcome, especially reports from people who use the **experimental** agents. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to build, test and add support for a new agent.
+
+Run the tests with:
+
+```sh
+xcodegen generate
+xcodebuild -project Pip.xcodeproj -scheme Pip -derivedDataPath build/DerivedData test
+```
+
+Please read the [Code of Conduct](CODE_OF_CONDUCT.md). To report a security issue, see [SECURITY.md](SECURITY.md).
 
 ## License
 
