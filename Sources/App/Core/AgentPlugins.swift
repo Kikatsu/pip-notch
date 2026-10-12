@@ -138,6 +138,70 @@ enum AgentPlugins {
         """
     }
 
+    /// ~/.ohmypi/extensions/pip.ts
+    static func ohmypi(bridgePath: String) -> String {
+        """
+        // \(header("Oh My Pi"))
+        import { spawn } from "node:child_process";
+
+        const BRIDGE = \(jsonString(bridgePath));
+        const SESSION = `ohmypi-${process.pid}`;
+
+        function send(payload: Record<string, unknown>) {
+          try {
+            const child = spawn(BRIDGE, ["ohmypi"], { stdio: ["pipe", "ignore", "ignore"] });
+            child.on("error", () => {});
+            child.stdin?.on("error", () => {});
+            child.stdin?.end(JSON.stringify({ session_id: SESSION, ...payload }));
+          } catch {}
+        }
+
+        function lastAssistantText(messages: any[]): string | undefined {
+          for (let i = messages.length - 1; i >= 0; i--) {
+            const message = messages[i];
+            if (message?.role !== "assistant") continue;
+            if (typeof message.content === "string") return message.content;
+            if (Array.isArray(message.content)) {
+              const text = message.content.filter((part: any) => part?.type === "text").map((part: any) => part.text).join(" ");
+              if (text) return text;
+            }
+          }
+          return undefined;
+        }
+
+        export default function (pi: any) {
+          let cwd = process.cwd();
+          let reply: string | undefined;
+
+          pi.on("session_start", async (_event: any, ctx: any) => {
+            cwd = ctx?.cwd ?? cwd;
+            send({ hook_event_name: "SessionStart", cwd });
+          });
+          pi.on("input", async (event: any, ctx: any) => {
+            cwd = ctx?.cwd ?? cwd;
+            send({ hook_event_name: "UserPromptSubmit", cwd, prompt: event?.text });
+          });
+          pi.on("agent_start", async () => {
+            send({ hook_event_name: "AgentActive", cwd });
+          });
+          pi.on("tool_call", async (event: any) => {
+            send({ hook_event_name: "PreToolUse", cwd, tool_name: event?.toolName, tool_input: event?.input ?? {} });
+          });
+          pi.on("agent_end", async (event: any) => {
+            reply = lastAssistantText(event?.messages ?? []);
+          });
+          pi.on("agent_settled", async () => {
+            send({ hook_event_name: "Stop", cwd, last_assistant_message: reply });
+            reply = undefined;
+          });
+          pi.on("session_shutdown", async (event: any) => {
+            if (event?.reason === "quit") send({ hook_event_name: "SessionEnd", cwd });
+          });
+        }
+
+        """
+    }
+
     /// ~/.copilot/hooks/pip.json. Copilot payloads don't name their event, so it's passed as an argument.
     static func copilot(bridgePath: String) -> String {
         let events = ["sessionStart", "sessionEnd", "userPromptSubmitted", "preToolUse", "postToolUse", "agentStop", "errorOccurred", "notification"]
@@ -152,7 +216,7 @@ enum AgentPlugins {
 
     /// ~/.kiro/hooks/pip.json. Kiro's payload doesn't name its trigger, so it's passed as an argument.
     static func kiro(bridgePath: String) -> String {
-        let hooks: [[String: Any]] = ["SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "Stop"].map { trigger in
+        let hooks: [[String: Any]] = ["SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "Stop"].map { (trigger: String) -> [String: Any] in
             [
                 "name": "Pip notch: \(trigger)",
                 "trigger": trigger,

@@ -275,6 +275,154 @@ struct AgentIntegration: Identifiable {
                 ],
                 note: "App and agy CLI. Status and alerts."
             ),
+            AgentIntegration(
+                agent: .zcode,
+                configURL: at(".zcode/settings.json"),
+                format: .claudeStyle([
+                    ("SessionStart", .async), ("SessionEnd", .async), ("UserPromptSubmit", .async),
+                    ("PreToolUse", .async), ("PostToolUse", .async), ("PostToolUseFailure", .async),
+                    ("PermissionRequest", .blocking(timeout: 600)), ("Notification", .async),
+                    ("Stop", .async), ("StopFailure", .async),
+                ]),
+                detectPaths: [at(".zcode").path, "/Applications/ZCode.app", at(".local/bin/zcode").path, "/opt/homebrew/bin/zcode"],
+                note: "Approvals in the notch."
+            ),
+            AgentIntegration(
+                agent: .trae,
+                configURL: at(".trae/hooks.json"),
+                format: .flat(events: [
+                    "sessionStart", "sessionEnd", "beforeSubmitPrompt", "postToolUse",
+                    "afterShellExecution", "afterFileEdit", "afterAgentResponse", "stop",
+                ], version: 1, extras: [:]),
+                detectPaths: [at(".trae").path, "/Applications/Trae.app", at(".local/bin/trae").path],
+                note: "ByteDance Trae IDE. Status and alerts."
+            ),
+            AgentIntegration(
+                agent: .mimocode,
+                configURL: at(".mimocode/settings.json"),
+                format: .claudeStyle([
+                    ("SessionStart", .async), ("SessionEnd", .async), ("UserPromptSubmit", .async),
+                    ("PreToolUse", .async), ("PostToolUse", .async), ("PostToolUseFailure", .async),
+                    ("PermissionRequest", .blocking(timeout: 600)), ("Notification", .async),
+                    ("Stop", .async), ("StopFailure", .async),
+                ]),
+                detectPaths: [at(".mimocode").path, "/Applications/MiMoCode.app", at(".local/bin/mimocode").path],
+                note: "MiMoCode agent. Approvals in the notch."
+            ),
+            AgentIntegration(
+                agent: .devin,
+                configURL: at(".devin/hooks.json"),
+                format: .claudeStyle([
+                    ("SessionStart", .async), ("SessionEnd", .async), ("UserPromptSubmit", .async),
+                    ("PreToolUse", .async), ("PostToolUse", .async), ("PostToolUseFailure", .async),
+                    ("PermissionRequest", .blocking(timeout: 600)), ("Notification", .async),
+                    ("Stop", .async), ("StopFailure", .async),
+                ]),
+                detectPaths: [at(".devin").path, "/Applications/Devin.app", at(".local/bin/devin").path, "/opt/homebrew/bin/devin"],
+                note: "Devin CLI and app. Approvals in the notch."
+            ),
+            AgentIntegration(
+                agent: .qoderwork,
+                configURL: at(".qoderwork/settings.json"),
+                format: .claudeStyle([
+                    ("SessionStart", .async), ("SessionEnd", .async), ("UserPromptSubmit", .async),
+                    ("PreToolUse", .async), ("PostToolUse", .async), ("PostToolUseFailure", .async),
+                    ("PermissionRequest", .blocking(timeout: 600)), ("Notification", .async),
+                    ("Stop", .async), ("StopFailure", .async),
+                ]),
+                detectPaths: [at(".qoderwork").path, "/Applications/QoderWork.app", at(".local/bin/qoderwork").path],
+                note: "QoderWork multi-agent workspace. Approvals in the notch."
+            ),
+            AgentIntegration(
+                agent: .qwenwork,
+                configURL: at(".qwenwork/settings.json"),
+                format: .claudeStyle([
+                    ("SessionStart", .async), ("SessionEnd", .async), ("UserPromptSubmit", .async),
+                    ("PreToolUse", .async), ("PostToolUse", .async), ("PermissionRequest", .async),
+                    ("Notification", .async), ("Stop", .async), ("StopFailure", .async),
+                ]),
+                detectPaths: [at(".qwenwork").path, "/Applications/QwenWork.app", at(".local/bin/qwenwork").path],
+                note: "QwenWork workspace. Status and alerts."
+            ),
+            AgentIntegration(
+                agent: .deepseek,
+                configURL: at(".deepseek/settings.json"),
+                format: .claudeStyle([
+                    ("SessionStart", .async), ("SessionEnd", .async), ("UserPromptSubmit", .async),
+                    ("PreToolUse", .async), ("PostToolUse", .async), ("Stop", .async), ("StopFailure", .async),
+                ]),
+                detectPaths: [at(".deepseek").path, "/Applications/DeepSeek.app", at(".local/bin/deepseek").path, "/opt/homebrew/bin/deepseek", at(".local/bin/codewhale").path],
+                note: "DeepSeek CLI and desktop. Status and replies."
+            ),
+            AgentIntegration(
+                agent: .dsh,
+                configURL: at(".dsh/settings.json"),
+                format: .claudeStyle([
+                    ("SessionStart", .async), ("SessionEnd", .async), ("UserPromptSubmit", .async),
+                    ("PreToolUse", .async), ("PostToolUse", .async), ("PostToolUseFailure", .async),
+                    ("PermissionRequest", .blocking(timeout: 600)), ("Notification", .async),
+                    ("Stop", .async), ("StopFailure", .async),
+                ]),
+                detectPaths: [at(".dsh").path, at(".local/bin/dsh").path, "/opt/homebrew/bin/dsh"],
+                note: "DeepSeek Harness testbed and runner. Approvals in the notch."
+            ),
+            AgentIntegration(
+                agent: .codebuddy,
+                configURL: at(".codebuddy/settings.json"),
+                format: .claudeStyle([
+                    ("SessionStart", .async), ("SessionEnd", .async), ("UserPromptSubmit", .async),
+                    ("PreToolUse", .async), ("PostToolUse", .async), ("Stop", .async),
+                ]),
+                detectPaths: [at(".codebuddy").path, "/Applications/CodeBuddy.app", at(".local/bin/codebuddy").path],
+                note: "CodeBuddy coding companion. Status and replies."
+            ),
+            AgentIntegration(
+                agent: .workbuddy,
+                configURL: at(".workbuddy/settings.json"),
+                format: .claudeStyle([
+                    ("SessionStart", .async), ("SessionEnd", .async), ("UserPromptSubmit", .async),
+                    ("PreToolUse", .async), ("PostToolUse", .async), ("Stop", .async),
+                ]),
+                detectPaths: [at(".workbuddy").path, "/Applications/WorkBuddy.app", at(".local/bin/workbuddy").path],
+                note: "WorkBuddy assistant. Status and replies."
+            ),
+            AgentIntegration(
+                agent: .hermes,
+                configURL: at(".hermes/hooks.json"),
+                format: .claudeStyle([
+                    ("SessionStart", .async), ("SessionEnd", .async), ("UserPromptSubmit", .async),
+                    ("PreToolUse", .async), ("PostToolUse", .async), ("Stop", .async),
+                ]),
+                detectPaths: [at(".hermes").path, at(".local/bin/hermes").path, "/opt/homebrew/bin/hermes"],
+                note: "Hermes agent. Status and replies."
+            ),
+            AgentIntegration(
+                agent: .amp,
+                configURL: at(".amp/settings.json"),
+                format: .claudeStyle([
+                    ("SessionStart", .async), ("SessionEnd", .async), ("UserPromptSubmit", .async),
+                    ("PreToolUse", .async), ("PostToolUse", .async), ("Stop", .async),
+                ]),
+                detectPaths: [at(".amp").path, at(".local/bin/amp").path, "/opt/homebrew/bin/amp"],
+                note: "Amp agent. Status and replies."
+            ),
+            AgentIntegration(
+                agent: .ohmypi,
+                configURL: at(".ohmypi/extensions/pip.ts"),
+                format: .ownedFile(AgentPlugins.ohmypi(bridgePath:)),
+                detectPaths: [at(".ohmypi").path, at(".local/bin/ohmypi").path],
+                note: "Status and replies. Restart Oh My Pi after connecting."
+            ),
+            AgentIntegration(
+                agent: .gajaecode,
+                configURL: at(".gajaecode/settings.json"),
+                format: .claudeStyle([
+                    ("SessionStart", .async), ("SessionEnd", .async), ("UserPromptSubmit", .async),
+                    ("PreToolUse", .async), ("PostToolUse", .async), ("Stop", .async),
+                ]),
+                detectPaths: [at(".gajaecode").path, at(".gajae").path, at(".local/bin/gajaecode").path, "/Applications/Gajae.app"],
+                note: "Gajae Code agent. Status and replies."
+            ),
         ]
     }
 }
@@ -406,13 +554,26 @@ struct HookFile {
     func write(_ config: [String: Any]) throws {
         let fm = FileManager.default
         try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        if fm.fileExists(atPath: url.path) {
-            let backup = url.appendingPathExtension("pip-backup")
-            try? fm.removeItem(at: backup)
-            try fm.copyItem(at: url, to: backup)
-        }
+        try ConfigBackup.save(url)
         let data = try JSONSerialization.data(withJSONObject: config, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
         try data.write(to: url, options: .atomic)
+    }
+}
+
+/// Keeps `<file>.pip-backup` as the user's last version without Pip's hooks.
+enum ConfigBackup {
+    static func url(for url: URL) -> URL { url.appendingPathExtension("pip-backup") }
+
+    /// Refreshes the backup only from a file Pip hasn't touched, so repairs and
+    /// reconnects never replace the original with a copy that already has Pip's hooks.
+    static func save(_ url: URL) throws {
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: url.path) else { return }
+        let backup = self.url(for: url)
+        let hasPip = (try? String(contentsOf: url, encoding: .utf8))?.contains(HookConfig.marker) ?? false
+        if hasPip, fm.fileExists(atPath: backup.path) { return }
+        try? fm.removeItem(at: backup)
+        try fm.copyItem(at: url, to: backup)
     }
 }
 
@@ -486,11 +647,7 @@ enum TomlBlock {
     static func write(_ text: String, to url: URL) throws {
         let fm = FileManager.default
         try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        if fm.fileExists(atPath: url.path) {
-            let backup = url.appendingPathExtension("pip-backup")
-            try? fm.removeItem(at: backup)
-            try fm.copyItem(at: url, to: backup)
-        }
+        try ConfigBackup.save(url)
         try Data(text.utf8).write(to: url, options: .atomic)
     }
 }

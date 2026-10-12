@@ -2,7 +2,9 @@
 
 A macOS notch companion that shows what your AI coding agents are doing. The notch itself has eyes: they scan while agents work, widen when one needs your approval, cross out on errors and squint happily when a task finishes.
 
-Works with Claude Code, Codex, Gemini CLI, Copilot CLI, Droid, OpenCode, Pi, Kiro CLI, Qoder CLI, Augment (`auggie`), Goose, Grok Build, Kimi Code, Mistral Vibe, Qwen Code, Cursor (app and `cursor-agent`), Windsurf and Antigravity (app and `agy`), including the Claude Code and Codex extensions inside VS Code, Cursor and other editors.
+Supports 32 AI coding agents and their extensions inside VS Code, Cursor and other editors. **Claude Code, Codex, Antigravity CLI and Cursor are tested**; the rest are **experimental**: built from each agent's hook format but not yet checked against a real install. If one doesn't work for you, please open an issue.
+
+> **Beta (0.1.0).** Pip isn't signed with an Apple Developer ID yet, so the recommended way to run it is to build it from source (below). If you download a prebuilt `Pip.app`, macOS will say it's damaged or can't be opened; clear the download flag once with `xattr -dr com.apple.quarantine /Applications/Pip.app`.
 
 ## Build and run
 
@@ -26,24 +28,42 @@ xcodebuild -project Pip.xcodeproj -scheme Pip -derivedDataPath build/DerivedData
 
 Pip connects every agent it finds automatically, at launch and every minute after, so agents you install later are picked up too. It also repairs hooks that an agent update removed. Pressing **Disconnect** in Settings keeps that agent off, and **Connect agents automatically** turns the whole behaviour off. Open **Settings…** (General, Agents, Appearance, Sounds, Shortcuts) from the eyes icon in the menu bar or the ⚙ in the notch.
 
-When connecting, Pip copies its `pip-bridge` helper to `~/Library/Application Support/Pip/bin/` and adds its hooks to that agent's config, saving the previous file as `<file>.pip-backup`. **Disconnect** removes only Pip's hooks.
+When connecting, Pip copies its `pip-bridge` helper to `~/Library/Application Support/Pip/bin/` and adds its hooks to that agent's config, saving your last version without Pip's hooks as `<file>.pip-backup` (later reconnects and repairs never overwrite it). **Disconnect** removes only Pip's hooks.
 
-| Agent | Config file | What Pip shows |
-| --- | --- | --- |
-| Claude Code | `~/.claude/settings.json` | Status, tools, approvals from the notch |
-| Codex | `~/.codex/hooks.json` | Status, tools, approvals from the notch. Run `/hooks` in Codex once to trust Pip's hooks. |
-| Gemini CLI | `~/.gemini/settings.json` | Status, tools, replies; "needs you" when a tool prompt is waiting |
-| Copilot CLI | `~/.copilot/hooks/pip.json` (Pip's own file) | Status, tools; "needs you" on permission prompts |
-| Droid | `~/.factory/hooks.json`, else `~/.factory/settings.json` | Status, tools; "needs you" on permission prompts |
-| OpenCode | `~/.config/opencode/plugins/pip.js` (Pip's own plugin) | Status, tools; "needs you" on permission prompts |
-| Pi | `~/.pi/agent/extensions/pip.ts` (Pip's own extension) | Status, tools, replies |
-| Kiro CLI | `~/.kiro/hooks/pip.json` (Pip's own file, Kiro CLI 3+) | Status, tools, replies |
-| Qoder CLI | `~/.qoder/settings.json` | Status, tools, approvals from the notch |
-| Augment | `~/.augment/settings.json` | Status, tools and replies for `auggie` |
-| Goose | `~/.agents/plugins/pip/` (Pip's own plugin) | Status, tools and replies |
-| Cursor | `~/.cursor/hooks.json` | Status, tools and replies for the app, `cursor-agent` and Grok Bot's local agents (shown as "Grok Bot"). Approvals stay in the app. |
-| Windsurf | `~/.codeium/windsurf/hooks.json` | Status, commands, edits and replies from Cascade |
-| Antigravity | `~/.gemini/config/hooks.json` | Status and tools for the app and the `agy` CLI. Approvals stay in Antigravity. |
+| Agent | Status | Config file | What Pip shows |
+| --- | --- | --- | --- |
+| Claude Code | Tested | `~/.claude/settings.json` | Status, tools, approvals from the notch |
+| Codex | Tested | `~/.codex/hooks.json` | Status, tools, approvals from the notch. Run `/hooks` in Codex once to trust Pip's hooks. |
+| ZCode | Experimental | `~/.zcode/settings.json` | Status, tools, approvals from the notch |
+| Gemini CLI | Experimental | `~/.gemini/settings.json` | Status, tools, replies; "needs you" when a tool prompt is waiting |
+| Antigravity CLI | Tested | `~/.gemini/config/hooks.json` | Status and tools for the app and `agy` CLI |
+| Cursor | Tested | `~/.cursor/hooks.json` | Status, tools and replies for the app, `cursor-agent` and Grok Bot |
+| Trae | Experimental | `~/.trae/hooks.json` | Status, commands, edits and replies from Trae IDE |
+| OpenCode | Experimental | `~/.config/opencode/plugins/pip.js` | Status, tools; "needs you" on permission prompts |
+| MiMoCode | Experimental | `~/.mimocode/settings.json` | Status, tools, approvals from the notch |
+| Droid | Experimental | `~/.factory/hooks.json`, else `~/.factory/settings.json` | Status, tools; "needs you" on permission prompts |
+| Devin | Experimental | `~/.devin/hooks.json` | Status, tools, approvals from the notch |
+| Qoder | Experimental | `~/.qoder/settings.json` | Status, tools, approvals from the notch |
+| QoderWork | Experimental | `~/.qoderwork/settings.json` | Multi-agent status, tools, approvals from the notch |
+| Qwen | Experimental | `~/.qwen/settings.json` | Status, tools, replies; "needs you" on permission prompts |
+| QwenWork | Experimental | `~/.qwenwork/settings.json` | Workspace status, tools, replies |
+| Grok Build | Experimental | `~/.grok/hooks/pip.json` | Status and replies for xAI's Grok Build |
+| Kimi Code | Experimental | `~/.kimi-code/config.toml` | Status, tools, replies |
+| DeepSeek | Experimental | `~/.deepseek/settings.json` | Status, tools, replies |
+| DeepSeek Harness (`dsh`) | Experimental | `~/.dsh/settings.json` | Harness testbed status, tools, approvals from the notch |
+| Mistral Vibe | Experimental | `~/.vibe/hooks.toml` | Status and replies for Mistral Vibe |
+| Copilot CLI | Experimental | `~/.copilot/hooks/pip.json` | Status, tools; "needs you" on permission prompts |
+| CodeBuddy | Experimental | `~/.codebuddy/settings.json` | Companion status, tools, replies |
+| WorkBuddy | Experimental | `~/.workbuddy/settings.json` | Assistant status, tools, replies |
+| Kiro CLI | Experimental | `~/.kiro/hooks/pip.json` | Status, tools, replies (Kiro CLI 3+) |
+| Hermes | Experimental | `~/.hermes/hooks.json` | Agent status, tools, replies |
+| Amp | Experimental | `~/.amp/settings.json` | Agent status, tools, replies |
+| Pi Agent | Experimental | `~/.pi/agent/extensions/pip.ts` | Status, tools, replies |
+| Oh My Pi | Experimental | `~/.ohmypi/extensions/pip.ts` | Companion status, tools, replies |
+| Gajae Code | Experimental | `~/.gajaecode/settings.json` | Agent status, tools, replies |
+| Augment | Experimental | `~/.augment/settings.json` | Status, tools and replies for `auggie` |
+| Goose | Experimental | `~/.agents/plugins/pip/` | Status, tools and replies |
+| Windsurf | Experimental | `~/.codeium/windsurf/hooks.json` | Status, commands, edits and replies from Cascade |
 
 Not supported yet: Zed's own agent has no hooks, and Zed doesn't run Claude Code hooks for its Claude integration (Codex and Gemini in Zed work through their own hooks). Cline's hook format couldn't be confirmed.
 
@@ -73,9 +93,9 @@ Sounds come in four packs: **Pip** (bells and marimba), **Soft** (quiet glass an
 
 ## Reviewing plans and questions
 
-When Claude Code finishes planning, the plan appears in the notch. **Approve plan** lets it start; **Keep planning** sends it back, with your note if you typed one. When an agent asks you a question, the notch shows it with its options, and **Answer in terminal** takes you there.
+When an agent finishes planning, the plan appears in the notch with full Markdown rendering (headings, code blocks with copy buttons, checklists, tables, blockquotes). You can expand the preview for full reading, click quick feedback chips (`+ Add tests`, `⚡ Simplify`, etc.), and type feedback to send changes directly back without leaving the notch. **Approve plan** (`⌃⌥↩`) starts execution.
 
-A finished turn stays quiet (no popup, no sound) if you're already looking at the app it runs in. Session rows show the git branch.
+When an agent asks a question (Claude Code, Codex, Antigravity, and others), the notch presents the question and options styled as interactive cards with `⌘1`, `⌘2`, `⌘3` shortcuts, plus a field to type a custom answer directly without switching away. **Answer in terminal** remains available to jump to the session.
 
 ## Keyboard shortcuts
 
@@ -116,3 +136,7 @@ Claude Code hook → pip-bridge (stdin JSON) → Unix socket → Pip.app
 - `Sources/App/Settings`: the Settings window.
 - `Sources/App/Notch`: the panel, notch geometry, hover tracking.
 - `Sources/App/Views`: the notch shape, the three characters and the panel content.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

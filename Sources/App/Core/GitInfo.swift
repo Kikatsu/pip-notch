@@ -34,7 +34,7 @@ enum GitInfo {
     private static func worktreeGitDir(_ file: URL, relativeTo directory: URL) -> URL? {
         guard let text = try? String(contentsOf: file, encoding: .utf8),
               let line = text.split(separator: "\n").first, line.hasPrefix("gitdir: ") else { return nil }
-        let path = String(line.dropFirst(8)).trimmingCharacters(in: .whitespaces)
+        let path = String(line.dropFirst(8)).trimmingCharacters(in: .whitespacesAndNewlines)
         return path.hasPrefix("/") ? URL(fileURLWithPath: path) : directory.appendingPathComponent(path).standardizedFileURL
     }
 }

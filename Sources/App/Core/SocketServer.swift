@@ -47,6 +47,10 @@ final class SocketServer {
         unlink(path)
     }
 
+    deinit {
+        stop()
+    }
+
     private func acceptLoop(_ fd: Int32) {
         while true {
             let client = accept(fd, nil, nil)
@@ -89,6 +93,10 @@ final class BridgeConnection {
 
     init(fd: Int32) {
         self.fd = fd
+    }
+
+    deinit {
+        finish(nil)
     }
 
     /// Calls `onHangup` if the bridge goes away before we answer (the user pressed Esc, the agent died).

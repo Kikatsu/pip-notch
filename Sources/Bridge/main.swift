@@ -1,4 +1,7 @@
 import Foundation
+import Darwin
+
+signal(SIGPIPE, SIG_IGN)
 
 // pip-bridge <agent> [event]
 //
@@ -22,8 +25,8 @@ let eventName = payload?["hook_event_name"] as? String ?? (arguments.count > 1 ?
 /// The answer that changes nothing, for agents that require one.
 let neutralOutput: String? = {
     switch agent {
-    case "cursor": eventName == "beforeSubmitPrompt" ? #"{"continue":true}"# : "{}"
-    case "antigravity", "gemini", "qwen": "{}"
+    case "cursor", "trae": eventName == "beforeSubmitPrompt" ? #"{"continue":true}"# : "{}"
+    case "antigravity", "gemini", "qwen", "qwenwork": "{}"
     default: nil
     }
 }()
@@ -41,7 +44,8 @@ let agentPID = ProcessTree.agentProcess(startingAt: getppid())
 // Grok Build also runs Claude Code's hook files. Its own Pip hook reports its sessions,
 // so a Claude hook fired by Grok stays quiet instead of showing Grok as Claude.
 if agent == "claude", ProcessTree.name(of: agentPID).lowercased().contains("grok") { finish() }
-let blocking = BridgeWire.blockingEvents.contains(eventName) && ["claude", "codex", "qoder"].contains(agent)
+let nonBlockingAgents: Set<String> = ["kimi", "qwen", "qwenwork"]
+let blocking = BridgeWire.blockingEvents.contains(eventName) && !nonBlockingAgents.contains(agent)
 
 let forwardedEnv = [
     "TERM_PROGRAM", "TERM_SESSION_ID", "ITERM_SESSION_ID", "TMUX", "TMUX_PANE",
@@ -60,6 +64,7 @@ let envelope: [String: Any] = [
     // The hook runs in the agent's working directory; used when the payload has no cwd.
     "cwd": FileManager.default.currentDirectoryPath,
     "payload": payload,
+    "blocking": blocking,
 ]
 guard var line = try? JSONSerialization.data(withJSONObject: envelope) else { finish() }
 line.append(0x0A)

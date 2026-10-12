@@ -1,42 +1,107 @@
 import Foundation
 
 enum AgentKind: String, CaseIterable {
-    case claude, codex, gemini, copilot, droid, opencode, pi, kiro, qoder, augment, goose, grok, kimi, vibe, qwen,
-         cursor, grokBot, windsurf, antigravity, unknown
+    case claude, codex, zcode, gemini, antigravity, cursor, trae, opencode, mimocode, droid,
+         devin, qoder, qoderwork, qwen, qwenwork, grok, kimi, deepseek, dsh, vibe,
+         copilot, codebuddy, workbuddy, kiro, hermes, amp, pi, ohmypi, gajaecode,
+         augment, goose, grokBot, windsurf, unknown
 
-    init(raw: String) { self = AgentKind(rawValue: raw) ?? .unknown }
+    init(raw: String) {
+        let lower = raw.lowercased()
+        switch lower {
+        case "claude", "claude-code", "claudecode": self = .claude
+        case "codex": self = .codex
+        case "zcode", "z-code": self = .zcode
+        case "gemini", "gemini-cli", "geminicli": self = .gemini
+        case "antigravity", "antigravity-cli", "agy": self = .antigravity
+        case "cursor", "cursor-agent": self = .cursor
+        case "trae": self = .trae
+        case "opencode", "open-code": self = .opencode
+        case "mimocode", "mimo-code": self = .mimocode
+        case "droid", "factory-droid": self = .droid
+        case "devin": self = .devin
+        case "qoder", "qoder-cli", "qodercn": self = .qoder
+        case "qoderwork", "qoder-work": self = .qoderwork
+        case "qwen", "qwen-code", "qwencode": self = .qwen
+        case "qwenwork", "qwen-work": self = .qwenwork
+        case "grok", "grok-build", "grokbuild": self = .grok
+        case "kimi", "kimi-code", "kimicode": self = .kimi
+        case "deepseek", "deepseek-cli", "codewhale": self = .deepseek
+        case "dsh", "deepseek-harness", "deepseekharness": self = .dsh
+        case "vibe", "mistral-vibe", "mistralvibe": self = .vibe
+        case "copilot", "copilot-cli": self = .copilot
+        case "codebuddy", "code-buddy": self = .codebuddy
+        case "workbuddy", "work-buddy": self = .workbuddy
+        case "kiro", "kiro-cli": self = .kiro
+        case "hermes", "hermes-agent": self = .hermes
+        case "amp": self = .amp
+        case "pi", "pi-agent", "pi_agent": self = .pi
+        case "ohmypi", "oh-my-pi": self = .ohmypi
+        case "gajaecode", "gajae-code", "gajae": self = .gajaecode
+        case "augment", "auggie": self = .augment
+        case "goose": self = .goose
+        case "grokbot", "grok-bot": self = .grokBot
+        case "windsurf": self = .windsurf
+        default: self = AgentKind(rawValue: raw) ?? .unknown
+        }
+    }
 
     var displayName: String {
         switch self {
         case .claude: "Claude Code"
         case .codex: "Codex"
+        case .zcode: "ZCode"
         case .gemini: "Gemini CLI"
-        case .copilot: "Copilot CLI"
-        case .droid: "Droid"
+        case .antigravity: "Antigravity CLI"
+        case .cursor: "Cursor"
+        case .trae: "Trae"
         case .opencode: "OpenCode"
-        case .pi: "Pi"
-        case .kiro: "Kiro CLI"
-        case .qoder: "Qoder CLI"
-        case .augment: "Augment"
-        case .goose: "Goose"
+        case .mimocode: "MiMoCode"
+        case .droid: "Droid"
+        case .devin: "Devin"
+        case .qoder: "Qoder"
+        case .qoderwork: "QoderWork"
+        case .qwen: "Qwen"
+        case .qwenwork: "QwenWork"
         case .grok: "Grok Build"
         case .kimi: "Kimi Code"
+        case .deepseek: "DeepSeek"
+        case .dsh: "DeepSeek Harness"
         case .vibe: "Mistral Vibe"
-        case .qwen: "Qwen Code"
-        case .cursor: "Cursor"
+        case .copilot: "Copilot"
+        case .codebuddy: "CodeBuddy"
+        case .workbuddy: "WorkBuddy"
+        case .kiro: "Kiro"
+        case .hermes: "Hermes"
+        case .amp: "Amp"
+        case .pi: "Pi Agent"
+        case .ohmypi: "Oh My Pi"
+        case .gajaecode: "Gajae Code"
+        case .augment: "Augment"
+        case .goose: "Goose"
         case .grokBot: "Grok Bot"
         case .windsurf: "Windsurf"
-        case .antigravity: "Antigravity"
         case .unknown: "Agent"
         }
     }
 
     /// Editor-hosted agents: their process outlives sessions and they send no reliable end event.
-    var isIDE: Bool { self == .cursor || self == .grokBot || self == .windsurf || self == .antigravity }
+    var isIDE: Bool { self == .cursor || self == .grokBot || self == .windsurf || self == .antigravity || self == .trae }
 }
 
-enum SessionState: Equatable {
+enum SessionState: String, Hashable, CaseIterable {
     case idle, working, needsInput, error, rateLimited, finished
+
+    var displayName: String {
+        switch self {
+        case .idle: "Idle"
+        case .working: "Working"
+        case .needsInput: "Needs Input"
+        case .error: "Error"
+        case .rateLimited: "Rate Limited"
+        case .finished: "Finished"
+        }
+    }
 }
 
 /// What the notch's face shows: the most urgent state across every session.
@@ -81,6 +146,20 @@ struct AgentSession: Identifiable, Equatable {
     }
 }
 
+struct CodeDiff: Equatable {
+    let filePath: String
+    let oldText: String?
+    let newText: String?
+    let diffText: String?
+
+    init(filePath: String, oldText: String? = nil, newText: String? = nil, diffText: String? = nil) {
+        self.filePath = filePath
+        self.oldText = oldText
+        self.newText = newText
+        self.diffText = diffText
+    }
+}
+
 struct PendingApproval: Identifiable, Equatable {
     enum Kind: Equatable {
         /// A tool call to allow or deny.
@@ -94,6 +173,13 @@ struct PendingApproval: Identifiable, Equatable {
     struct Question: Equatable {
         let text: String
         let options: [String]
+        var descriptions: [String: String] = [:]
+
+        init(text: String, options: [String], descriptions: [String: String] = [:]) {
+            self.text = text
+            self.options = options
+            self.descriptions = descriptions
+        }
     }
 
     let id: UUID
@@ -107,6 +193,8 @@ struct PendingApproval: Identifiable, Equatable {
     var kind: Kind = .tool
     /// Display name, which differs from `agent.displayName` for custom agents.
     var agentName: String?
+    var risk: CommandRiskAssessment?
+    var diff: CodeDiff?
 }
 
 enum ApprovalDecision: Equatable {
@@ -156,5 +244,50 @@ enum ToolSummary {
         if short.isEmpty { return tool }
         let file = tool == "Bash" ? short : URL(fileURLWithPath: short).lastPathComponent
         return "\(tool) · \(file.prefix(80))"
+    }
+
+    /// Extracts code diff or preview information from an edit or write tool input.
+    static func extractDiff(tool: String, input: [String: Any]) -> CodeDiff? {
+        let filePath = (input["file_path"] as? String)
+            ?? (input["filePath"] as? String)
+            ?? (input["path"] as? String)
+            ?? (input["TargetFile"] as? String)
+            ?? (input["absolute_path"] as? String)
+            ?? (input["AbsolutePath"] as? String)
+            ?? (input["file"] as? String)
+            ?? ""
+
+        // 1. Unified diff / patch
+        if let diff = (input["patch"] as? String) ?? (input["diff"] as? String), !diff.isEmpty {
+            return CodeDiff(filePath: filePath, oldText: nil, newText: nil, diffText: diff)
+        }
+
+        // 2. old_string / new_string
+        if input["old_string"] != nil || input["new_string"] != nil {
+            let old = input["old_string"] as? String
+            let new = input["new_string"] as? String
+            return CodeDiff(filePath: filePath, oldText: old, newText: new, diffText: nil)
+        }
+
+        // 3. TargetContent / ReplacementContent
+        if input["TargetContent"] != nil || input["ReplacementContent"] != nil {
+            let old = input["TargetContent"] as? String
+            let new = input["ReplacementContent"] as? String
+            return CodeDiff(filePath: filePath, oldText: old, newText: new, diffText: nil)
+        }
+
+        // 4. content / CodeContent
+        if let content = (input["content"] as? String) ?? (input["CodeContent"] as? String) {
+            return CodeDiff(filePath: filePath, oldText: nil, newText: content, diffText: nil)
+        }
+
+        // 5. old_text / new_text
+        if input["old_text"] != nil || input["new_text"] != nil {
+            let old = input["old_text"] as? String
+            let new = input["new_text"] as? String
+            return CodeDiff(filePath: filePath, oldText: old, newText: new, diffText: nil)
+        }
+
+        return nil
     }
 }

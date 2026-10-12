@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 
 /// Locations shared by the app and the bridge binary.
 enum PipPaths {
@@ -12,7 +13,11 @@ enum PipPaths {
         if let override = ProcessInfo.processInfo.environment["PIP_SOCKET"], !override.isEmpty {
             return override
         }
-        return supportDirectory.appendingPathComponent("pip.sock").path
+        let standard = supportDirectory.appendingPathComponent("pip.sock").path
+        if standard.utf8.count < 100 {
+            return standard
+        }
+        return "/tmp/pip-\(getuid()).sock"
     }
 
     /// Stable copy of the bridge that agent hooks call, so hooks survive the app moving.

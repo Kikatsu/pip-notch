@@ -13,6 +13,7 @@ struct GeneralSettings: View {
     let runDemo: () -> Void
     @AppStorage(UsageStore.displayKey) private var limitDisplay = UsageStore.Display.always.rawValue
     @AppStorage(UsageStore.closedNotchKey) private var limitsInClosedNotch = false
+    @AppStorage(PipDefaults.notificationsEnabled) private var notificationsEnabled = true
     @State private var openAtLogin = SMAppService.mainApp.status == .enabled
     @State private var loginError: String?
 
@@ -31,6 +32,14 @@ struct GeneralSettings: View {
                         } catch {
                             loginError = error.localizedDescription
                             openAtLogin = SMAppService.mainApp.status == .enabled
+                        }
+                    }
+                Toggle("macOS System Notifications", isOn: $notificationsEnabled)
+                    .onChange(of: notificationsEnabled) { _, on in
+                        if on {
+                            Task {
+                                _ = try? await NotificationManager.shared.requestAuthorization()
+                            }
                         }
                     }
                 LabeledContent("Preview") {
@@ -210,17 +219,27 @@ struct AgentIcon: View {
     private static let appPaths: [AgentKind: [String]] = [
         .claude: ["/Applications/Claude.app"],
         .codex: ["/Applications/Codex.app", "/Applications/ChatGPT.app"],
+        .zcode: ["/Applications/ZCode.app"],
         .grok: ["/Applications/Grok.app"],
         .kimi: ["/Applications/Kimi.app"],
         .qwen: ["/Applications/Qwen.app"],
+        .qwenwork: ["/Applications/QwenWork.app"],
         .cursor: ["/Applications/Cursor.app"],
+        .trae: ["/Applications/Trae.app"],
         .grokBot: ["/Applications/Grok Bot.app"],
         .windsurf: ["/Applications/Windsurf.app"],
         .antigravity: ["/Applications/Antigravity.app"],
         .kiro: ["/Applications/Kiro.app"],
         .copilot: ["/Applications/Visual Studio Code.app"],
         .qoder: ["/Applications/Qoder.app"],
+        .qoderwork: ["/Applications/QoderWork.app"],
         .goose: ["/Applications/Goose.app"],
+        .devin: ["/Applications/Devin.app"],
+        .mimocode: ["/Applications/MiMoCode.app"],
+        .deepseek: ["/Applications/DeepSeek.app"],
+        .codebuddy: ["/Applications/CodeBuddy.app"],
+        .workbuddy: ["/Applications/WorkBuddy.app"],
+        .gajaecode: ["/Applications/Gajae.app"],
     ]
 
     var body: some View {
@@ -321,6 +340,7 @@ private struct StyleThumbnail: View {
 
 struct SoundSettings: View {
     @AppStorage(PipDefaults.soundsEnabled) private var soundsEnabled = true
+    @AppStorage(PipDefaults.hapticsEnabled) private var hapticsEnabled = true
     @AppStorage(PipDefaults.soundVolume) private var volume = 0.6
     @AppStorage(PipDefaults.soundPack) private var pack = SoundPack.pip.rawValue
     @State private var importError: String?
@@ -348,6 +368,13 @@ struct SoundSettings: View {
                 }
             } footer: {
                 Text(SoundPack(rawValue: pack)?.detail ?? "")
+            }
+
+            Section {
+                Toggle("Trackpad haptic feedback", isOn: $hapticsEnabled)
+                    .onChange(of: hapticsEnabled) { _, on in
+                        if on { HapticFeedback.play(.poke) }
+                    }
             }
 
             Section {

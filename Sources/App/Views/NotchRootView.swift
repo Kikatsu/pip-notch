@@ -112,8 +112,23 @@ struct NotchRootView: View {
                 LimitStrip(limits: shownLimits, now: store.now)
             }
 
-            if let approval = store.approvals.first {
-                ApprovalCard(approval: approval, position: 1, total: store.approvals.count, actions: actions)
+            if !store.approvals.isEmpty {
+                let safeIndex = min(max(0, viewModel.selectedApprovalIndex), store.approvals.count - 1)
+                let approval = store.approvals[safeIndex]
+                ApprovalCard(
+                    approval: approval,
+                    position: safeIndex + 1,
+                    total: store.approvals.count,
+                    actions: actions,
+                    onPrevious: store.approvals.count > 1 ? {
+                        viewModel.selectedApprovalIndex = (safeIndex - 1 + store.approvals.count) % store.approvals.count
+                        HapticFeedback.play(.selection)
+                    } : nil,
+                    onNext: store.approvals.count > 1 ? {
+                        viewModel.selectedApprovalIndex = (safeIndex + 1) % store.approvals.count
+                        HapticFeedback.play(.selection)
+                    } : nil
+                )
             } else {
                 SessionListView(store: store, actions: actions)
             }
@@ -125,6 +140,13 @@ struct NotchRootView: View {
         .padding(.horizontal, 14)
         .padding(.bottom, 16)
         .frame(width: NotchViewModel.expandedWidth)
+        .onChange(of: store.approvals.count) { _, count in
+            if count == 0 {
+                viewModel.selectedApprovalIndex = 0
+            } else if viewModel.selectedApprovalIndex >= count {
+                viewModel.selectedApprovalIndex = count - 1
+            }
+        }
     }
 
     private var summary: String {

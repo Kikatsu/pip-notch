@@ -41,7 +41,31 @@ enum DemoScript {
 
     /// Just a plan review and a question, for checking those cards.
     static func runReview(on store: SessionStore) {
-        let plan = "## Dark mode docs\n1. Add a **Theming** page with screenshots\n2. Document the `prefers-color-scheme` fallback\n3. Link it from the README"
+        let plan = """
+        # Dark Mode & Theming System
+
+        ## Architecture Plan
+        This implementation introduces dynamic theme switching with system appearance syncing.
+
+        ### Tasks
+        - [x] Configure theme color tokens
+        - [ ] Add dark mode toggle in navigation header
+        - [ ] Save user preference to local storage
+
+        ```typescript
+        export function useTheme() {
+          const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+          return { theme, toggleTheme: () => setTheme(t => t === 'dark' ? 'light' : 'dark') };
+        }
+        ```
+
+        | Setting | Default | Description |
+        | --- | --- | --- |
+        | Mode | Dark | High-contrast dark theme |
+        | Sync | Enabled | Follows system macOS appearance |
+
+        > Note: Verified contrast ratios comply with WCAG AAA standards.
+        """
         store.handle(HookEnvelope(agent: .claude, pid: nil, payload: [
             "hook_event_name": "PermissionRequest", "session_id": "demo-plan", "cwd": "/Users/demo/web-app",
             "tool_name": "ExitPlanMode", "tool_input": ["plan": plan],
@@ -49,7 +73,18 @@ enum DemoScript {
         store.handle(HookEnvelope(agent: .claude, pid: nil, payload: [
             "hook_event_name": "PermissionRequest", "session_id": "demo-question", "cwd": "/Users/demo/api-server",
             "tool_name": "AskUserQuestion",
-            "tool_input": ["questions": [["question": "Which database should the cache use?", "options": [["label": "Redis"], ["label": "SQLite"]]]]],
+            "tool_input": [
+                "questions": [
+                    [
+                        "question": "Which deployment target?",
+                        "options": [
+                            ["label": "Production"],
+                            ["label": "Staging"],
+                            ["label": "Local only"]
+                        ]
+                    ]
+                ]
+            ],
         ])) { NSLog("Pip demo: question answered \($0.name)") }
     }
 

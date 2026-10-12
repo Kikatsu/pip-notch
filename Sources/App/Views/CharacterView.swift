@@ -34,6 +34,7 @@ struct CharacterView: View {
     var gaze: CGSize = .zero
     var reaction: FaceState.Reaction?
     var reactionStart: Date = .distantPast
+    @ObservedObject var power: PowerManager = .shared
 
     @AppStorage(PipDefaults.character) private var storedStyle = CharacterStyle.livingNotch.rawValue
 
@@ -42,7 +43,8 @@ struct CharacterView: View {
     var body: some View {
         let style = resolvedStyle
         let reacting = reaction != nil && Date().timeIntervalSince(reactionStart) < (reaction?.duration ?? 0)
-        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: mood == .asleep && !reacting && (style == .livingNotch || style == .minimal))) { context in
+        let paused = power.isScreenSleeping || (mood == .asleep && !reacting && (style == .livingNotch || style == .minimal))
+        TimelineView(.animation(minimumInterval: power.targetFrameInterval, paused: paused)) { context in
             Canvas { gc, size in
                 let t = context.date.timeIntervalSinceReferenceDate
                 let (mood, scale) = Self.react(mood, reaction, age: context.date.timeIntervalSince(reactionStart))
@@ -106,7 +108,10 @@ struct InteractiveFace: View {
     var body: some View {
         CharacterView(mood: mood, large: large, gaze: face.gaze, reaction: face.reaction, reactionStart: face.reactionStart)
             .contentShape(Rectangle())
-            .onTapGesture { face.react(.poke) }
+            .onTapGesture {
+                HapticFeedback.play(.poke)
+                face.react(.poke)
+            }
             .help(large ? "Say hi" : "")
     }
 }

@@ -63,7 +63,7 @@ enum SocketIO {
             let remaining = deadline.timeIntervalSinceNow
             if remaining <= 0 { return nil }
             var pfd = pollfd(fd: fd, events: Int16(POLLIN), revents: 0)
-            let ready = poll(&pfd, 1, Int32(min(remaining, 60) * 1000))
+            let ready = poll(&pfd, 1, max(1, Int32(min(remaining, 60) * 1000)))
             if ready < 0 {
                 if errno == EINTR { continue }
                 return nil

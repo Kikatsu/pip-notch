@@ -92,6 +92,10 @@ enum Palette {
     static let green = Color(red: 0.13, green: 0.77, blue: 0.37)
     static let quiet = Color(white: 0.64)
     static let faint = Color(white: 1, opacity: 0.08)
+    static let cyan = Color(red: 0.22, green: 0.83, blue: 0.96)
+    static let darkCard = Color(red: 0.05, green: 0.11, blue: 0.14)
+    static let darkCardBorder = Color(red: 0.12, green: 0.24, blue: 0.29)
+    static let badgeBg = Color(red: 0.05, green: 0.22, blue: 0.27)
 
     static func label(for mood: Mood) -> String {
         switch mood {

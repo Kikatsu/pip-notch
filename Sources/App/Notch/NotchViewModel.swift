@@ -10,6 +10,7 @@ final class NotchViewModel: ObservableObject {
     @Published private(set) var isExpanded = false {
         didSet { if isExpanded, !oldValue { face.react(.hello) } }
     }
+    @Published var selectedApprovalIndex = 0
     let face = FaceState()
     @Published var isHovering = false
     /// At least one agent has Pip's hooks installed.
@@ -27,7 +28,18 @@ final class NotchViewModel: ObservableObject {
         self.notchSize = notchSize
     }
 
+    func currentApproval(in store: SessionStore) -> PendingApproval? {
+        guard !store.approvals.isEmpty else { return nil }
+        let safeIndex = min(max(0, selectedApprovalIndex), store.approvals.count - 1)
+        return store.approvals[safeIndex]
+    }
+
     func updateExpansion(store: SessionStore, now: Date = Date()) {
+        if store.approvals.isEmpty {
+            selectedApprovalIndex = 0
+        } else if selectedApprovalIndex >= store.approvals.count {
+            selectedApprovalIndex = store.approvals.count - 1
+        }
         let wantsApproval = !store.approvals.isEmpty && !approvalsDismissed
         let expanded = isHovering || wantsApproval || now < finishedPinnedUntil
         if expanded != isExpanded { isExpanded = expanded }

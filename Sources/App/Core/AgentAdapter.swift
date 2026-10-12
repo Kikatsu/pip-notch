@@ -8,24 +8,27 @@ enum AgentAdapter {
     static func normalize(_ payload: [String: Any], agent: AgentKind) -> [String: Any] {
         switch agent {
         case .claude, .codex: payload
-        // Qoder speaks Claude's format exactly; any agent Pip doesn't know gets best-effort aliasing.
-        case .qoder: canonicalizingTool(payload)
+        // Qoder and QoderWork speak Claude's format exactly; canonicalize tools.
+        case .qoder, .qoderwork: canonicalizingTool(payload)
         case .unknown: generic(payload)
         case .augment: augment(payload)
         case .grok: generic(payload)
-        case .kimi, .qwen: observingPermissions(payload)
+        case .kimi, .qwen, .qwenwork: observingPermissions(payload)
         case .vibe: vibe(payload)
         case .goose: goose(payload)
         // Grok Bot runs Cursor's agent engine, so its hooks speak Cursor's format.
         case .cursor, .grokBot: cursor(payload)
+        case .trae: trae(payload)
         case .antigravity: antigravity(payload)
         case .gemini: gemini(payload)
         case .kiro: kiro(payload)
         case .windsurf: windsurf(payload)
         case .copilot: copilot(payload)
         case .droid: droid(payload)
-        // Pip's own OpenCode plugin and Pi extension already send Claude-shaped events.
-        case .opencode, .pi: canonicalizingTool(payload)
+        // OpenCode, Pi, and Oh My Pi send Claude-shaped events.
+        case .opencode, .pi, .ohmypi: canonicalizingTool(payload)
+        case .zcode, .devin, .mimocode, .dsh, .deepseek, .codebuddy, .workbuddy, .hermes, .amp, .gajaecode:
+            canonicalizingTool(generic(payload))
         }
     }
 
@@ -44,8 +47,20 @@ enum AgentAdapter {
             if ["read", "read_file", "view", "view_file", "cat", "read_many_files"].contains(lower) {
                 return ("Read", ["file_path": path])
             }
-            if ["edit", "write", "write_file", "replace", "apply_patch", "patch", "create", "str_replace", "multiedit", "multi_edit"].contains(lower) {
-                return ("Edit", ["file_path": path])
+            if ["edit", "edit_file", "write", "write_file", "write_to_file", "replace", "replace_file_content", "apply_patch", "patch", "create", "str_replace", "multiedit", "multi_edit"].contains(lower) {
+                var editInput: [String: Any] = ["file_path": path]
+                let preservedKeys = [
+                    "old_string", "new_string",
+                    "TargetContent", "ReplacementContent",
+                    "content", "CodeContent",
+                    "patch", "diff"
+                ]
+                for key in preservedKeys {
+                    if let value = input[key] {
+                        editInput[key] = value
+                    }
+                }
+                return ("Edit", editInput)
             }
         }
         return (name, input)
@@ -304,6 +319,16 @@ enum AgentAdapter {
         return out
     }
 
+    // MARK: Trae (~/.trae/hooks.json)
+
+    static func trae(_ p: [String: Any]) -> [String: Any] {
+        let event = p["hook_event_name"] as? String ?? ""
+        if ["beforeSubmitPrompt", "afterShellExecution", "afterFileEdit", "postToolUse", "afterAgentResponse"].contains(event) || p["conversation_id"] != nil {
+            return cursor(p)
+        }
+        return generic(p)
+    }
+
     // MARK: Antigravity (~/.gemini/config/hooks.json)
 
     /// Antigravity payloads are camelCase and carry no event name; pip-bridge injects
@@ -346,7 +371,19 @@ enum AgentAdapter {
         let file = ["TargetFile", "AbsolutePath", "FilePath", "File"].lazy.compactMap { args[$0] as? String }.first
         if let file {
             let reading = name.contains("view") || name.contains("read")
-            return (reading ? "Read" : "Edit", ["file_path": file])
+            var outArgs: [String: Any] = ["file_path": file]
+            if !reading {
+                let preservedKeys = [
+                    "old_string", "new_string",
+                    "TargetContent", "ReplacementContent",
+                    "content", "CodeContent",
+                    "patch", "diff"
+                ]
+                for key in preservedKeys {
+                    if let value = args[key] { outArgs[key] = value }
+                }
+            }
+            return (reading ? "Read" : "Edit", outArgs)
         }
         return (name, args)
     }

@@ -66,11 +66,77 @@ final class ReviewAndBranchTests: XCTestCase {
         store.handle(HookEnvelope(agent: .claude, pid: nil, payload: ["hook_event_name": "UserPromptSubmit", "session_id": "s", "cwd": "/tmp/app"]))
         XCTAssertEqual(store.sessions["s"]?.branch, "main")
     }
+
+    func testAskUserQuestionWithStringArrayOptions() {
+        let store = SessionStore()
+        var answer: ApprovalDecision?
+        store.handle(permission("ask_question", [
+            "questions": [
+                ["question": "Which deployment target?", "options": ["Production", "Staging", "Local only"]]
+            ]
+        ]), reply: { answer = $0 })
+
+        XCTAssertEqual(store.approvals.first?.title, "Which deployment target?")
+        XCTAssertEqual(store.approvals.first?.kind, .question([.init(text: "Which deployment target?", options: ["Production", "Staging", "Local only"])]))
+
+        store.resolve(store.approvals[0].id, with: .deny("User selected: Production"))
+        XCTAssertEqual(answer, .deny("User selected: Production"))
+    }
+
+    func testAskUserQuestionDirectFormatAndDescriptions() {
+        let store = SessionStore()
+        store.handle(permission("AskUserQuestion", [
+            "question": "Which deployment target?",
+            "options": [
+                ["label": "Production", "description": "Deploy to live AWS"],
+                ["label": "Staging", "description": "Deploy to staging cluster"],
+                ["label": "Local only", "description": "Run locally only"]
+            ]
+        ]), reply: { _ in })
+
+        guard case .question(let questions) = store.approvals.first?.kind else {
+            XCTFail("Expected question kind")
+            return
+        }
+        XCTAssertEqual(questions.first?.text, "Which deployment target?")
+        XCTAssertEqual(questions.first?.options, ["Production", "Staging", "Local only"])
+        XCTAssertEqual(questions.first?.descriptions["Production"], "Deploy to live AWS")
+    }
 }
 
 final class PlanRenderingTests: XCTestCase {
     func testHeadingsBecomeBoldLines() {
         let rendered = String(ApprovalCard.render("## Plan\n1. Ship").characters)
         XCTAssertEqual(rendered, "Plan\n1. Ship")
+    }
+
+    func testMarkdownParserExtractsBlocks() {
+        let md = """
+        # Architecture Plan
+        ## Step 1
+        - [x] Done item
+        - [ ] Pending item
+        1. First task
+        2. Second task
+        > Critical note
+        ```swift
+        let x = 42
+        ```
+        | Col A | Col B |
+        | --- | --- |
+        | Val 1 | Val 2 |
+        ---
+        Paragraph text here.
+        """
+        let blocks = MarkdownParser.parse(md)
+        XCTAssertTrue(blocks.contains(.heading(level: 1, text: "Architecture Plan")))
+        XCTAssertTrue(blocks.contains(.heading(level: 2, text: "Step 1")))
+        XCTAssertTrue(blocks.contains(.taskList(items: [(true, "Done item"), (false, "Pending item")])))
+        XCTAssertTrue(blocks.contains(.orderedList(items: [(1, "First task"), (2, "Second task")])))
+        XCTAssertTrue(blocks.contains(.blockquote(text: "Critical note")))
+        XCTAssertTrue(blocks.contains(.codeBlock(language: "swift", code: "let x = 42")))
+        XCTAssertTrue(blocks.contains(.table(headers: ["Col A", "Col B"], rows: [["Val 1", "Val 2"]])))
+        XCTAssertTrue(blocks.contains(.horizontalRule))
+        XCTAssertTrue(blocks.contains(.paragraph(text: "Paragraph text here.")))
     }
 }

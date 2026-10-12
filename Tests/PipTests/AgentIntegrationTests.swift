@@ -100,6 +100,26 @@ final class AgentIntegrationTests: XCTestCase {
         XCTAssertThrowsError(try codex.install(bridgePath: bridge))
         XCTAssertEqual(try String(contentsOf: url, encoding: .utf8), "{ not json")
     }
+
+    func testRepeatedInstallsKeepTheOriginalBackup() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let url = dir.appendingPathComponent("hooks.json")
+        let backup = url.appendingPathExtension("pip-backup")
+        let original = #"{"theme":"dark"}"#
+        try Data(original.utf8).write(to: url)
+        let codex = AgentIntegration(agent: .codex, configURL: url, format: integration(.codex).format, detectPaths: [], note: nil)
+
+        try codex.install(bridgePath: bridge)
+        try codex.uninstall()
+        try codex.install(bridgePath: bridge)
+        try codex.install(bridgePath: "/other/pip-bridge")
+        let saved = try String(contentsOf: backup, encoding: .utf8)
+        XCTAssertFalse(saved.contains(HookConfig.marker))
+        XCTAssertTrue(saved.contains("dark"))
+    }
 }
 
 final class AgentAdapterTests: XCTestCase {

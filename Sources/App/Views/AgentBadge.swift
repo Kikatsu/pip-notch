@@ -19,20 +19,34 @@ extension AgentKind {
         switch self {
         case .claude: "CC"
         case .codex: "CX"
+        case .zcode: "ZC"
         case .gemini: "GM"
         case .copilot: "CP"
         case .droid: "DR"
         case .opencode: "OC"
+        case .mimocode: "MC"
+        case .devin: "DV"
         case .pi: "PI"
+        case .ohmypi: "OP"
         case .kiro: "KR"
         case .qoder: "QD"
+        case .qoderwork: "QO"
+        case .qwen: "QW"
+        case .qwenwork: "QN"
+        case .deepseek: "DS"
+        case .dsh: "DH"
+        case .codebuddy: "CB"
+        case .workbuddy: "WB"
+        case .hermes: "HM"
+        case .amp: "AM"
+        case .gajaecode: "GC"
         case .augment: "AU"
         case .goose: "GS"
         case .grok: "GK"
         case .kimi: "KM"
         case .vibe: "MV"
-        case .qwen: "QW"
         case .cursor: "CU"
+        case .trae: "TR"
         case .grokBot: "GB"
         case .windsurf: "WS"
         case .antigravity: "AG"
@@ -44,20 +58,34 @@ extension AgentKind {
         switch self {
         case .claude: Color(red: 0.91, green: 0.55, blue: 0.40)
         case .codex: Color(red: 0.45, green: 0.80, blue: 0.70)
+        case .zcode: Color(red: 0.35, green: 0.65, blue: 0.95)
         case .gemini: Color(red: 0.49, green: 0.62, blue: 1.0)
         case .copilot: Color(red: 0.80, green: 0.80, blue: 0.86)
         case .droid: Color(red: 0.98, green: 0.69, blue: 0.30)
         case .opencode: Color(red: 0.95, green: 0.95, blue: 0.95)
+        case .mimocode: Color(red: 1.0, green: 0.45, blue: 0.15)
+        case .devin: Color(red: 0.25, green: 0.78, blue: 0.62)
         case .pi: Color(red: 0.86, green: 0.52, blue: 0.96)
+        case .ohmypi: Color(red: 0.80, green: 0.40, blue: 0.90)
         case .kiro: Color(red: 0.62, green: 0.50, blue: 1.0)
         case .qoder: Color(red: 0.36, green: 0.82, blue: 0.55)
+        case .qoderwork: Color(red: 1.0, green: 0.60, blue: 0.20)
+        case .qwen: Color(red: 0.55, green: 0.45, blue: 1.0)
+        case .qwenwork: Color(red: 0.45, green: 0.40, blue: 0.95)
+        case .deepseek: Color(red: 0.30, green: 0.55, blue: 1.0)
+        case .dsh: Color(red: 0.25, green: 0.70, blue: 0.95)
+        case .codebuddy: Color(red: 0.20, green: 0.60, blue: 0.95)
+        case .workbuddy: Color(red: 0.35, green: 0.50, blue: 0.90)
+        case .hermes: Color(red: 0.95, green: 0.75, blue: 0.20)
+        case .amp: Color(red: 0.95, green: 0.35, blue: 0.25)
+        case .gajaecode: Color(red: 0.92, green: 0.40, blue: 0.45)
         case .augment: Color(red: 0.95, green: 0.95, blue: 0.95)
         case .goose: Color(red: 0.98, green: 0.80, blue: 0.40)
         case .grok: Color(red: 0.88, green: 0.88, blue: 0.92)
         case .kimi: Color(red: 0.45, green: 0.62, blue: 1.0)
         case .vibe: Color(red: 1.0, green: 0.55, blue: 0.25)
-        case .qwen: Color(red: 0.55, green: 0.45, blue: 1.0)
         case .cursor: Color(red: 0.72, green: 0.85, blue: 1.0)
+        case .trae: Color(red: 0.20, green: 0.85, blue: 0.65)
         case .grokBot: Color(red: 0.88, green: 0.88, blue: 0.92)
         case .windsurf: Color(red: 0.35, green: 0.85, blue: 0.75)
         case .antigravity: Color(red: 0.40, green: 0.78, blue: 1.0)

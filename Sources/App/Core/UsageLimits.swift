@@ -103,8 +103,13 @@ enum CodexUsage {
         guard let handle = try? FileHandle(forReadingFrom: url) else { return [] }
         defer { try? handle.close() }
         let size = (try? handle.seekToEnd()) ?? 0
-        try? handle.seek(toOffset: size > 262_144 ? size - 262_144 : 0)
-        guard let data = try? handle.readToEnd(), let text = String(data: data, encoding: .utf8) else { return [] }
+        let offset: UInt64 = size > 262_144 ? size - 262_144 : 0
+        try? handle.seek(toOffset: offset)
+        guard var data = try? handle.readToEnd(), !data.isEmpty else { return [] }
+        if offset > 0, let firstNewline = data.firstIndex(of: 0x0A) {
+            data = data.subdata(in: (firstNewline + 1)..<data.endIndex)
+        }
+        let text = String(decoding: data, as: UTF8.self)
 
         for line in text.split(separator: "\n").reversed() where line.contains("rate_limits") {
             guard let object = (try? JSONSerialization.jsonObject(with: Data(line.utf8))) as? [String: Any],

@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import SwiftUI
+import UserNotifications
 
 @main
 struct PipApp: App {
@@ -31,6 +32,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // As a unit-test host, stay inert so a running Pip keeps its socket.
         if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil { return }
         PipDefaults.register()
+
+        NotificationManager.shared.store = store
+        NotificationManager.shared.onResolve = { [weak self] id, decision in self?.resolve(id, decision) }
+        NotificationManager.shared.sessionLookup = { [weak self] sessionID in self?.store.sessions[sessionID] }
+        UNUserNotificationCenter.current().delegate = NotificationManager.shared
+        Task {
+            _ = try? await NotificationManager.shared.requestAuthorization()
+        }
 
         do {
             integrations.bridgePath = try BridgeInstaller.installBundledBridge()
@@ -68,6 +77,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         self.notch = notch
         store.onAttention = { [weak self] attention, session in
             self?.attention(attention, session: session)
+        }
+        store.onApprovalRemoved = { id in
+            NotificationManager.shared.removeApprovalNotification(for: id)
         }
         notch.show()
         setUpStatusItem()
@@ -158,28 +170,55 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// Approvals always surface. A finished turn stays quiet if you're already looking at
     /// the app it runs in: you saw it finish.
     private func attention(_ attention: SessionStore.Attention, session: AgentSession) {
-        if attention == .finished,
-           let host = HostApps.app(env: session.env, pid: session.pid),
-           host.processIdentifier == NSWorkspace.shared.frontmostApplication?.processIdentifier {
+        let host = HostApps.app(env: session.env, pid: session.pid)
+        let hostIsFrontmost = host != nil && host?.processIdentifier == NSWorkspace.shared.frontmostApplication?.processIdentifier
+
+        if attention == .finished, hostIsFrontmost {
             return
         }
         notch?.handle(attention)
         SoundPlayer.shared.play(attention.cue)
+        switch attention {
+        case .approval, .needsInput:
+            HapticFeedback.play(.attention)
+        case .finished:
+            HapticFeedback.play(.finished)
+        case .error, .rateLimited:
+            break
+        }
+
+        if NotificationManager.shared.isEnabled, !hostIsFrontmost {
+            switch attention {
+            case .approval:
+                if let approval = store.approvals.last(where: { $0.sessionID == session.id }) {
+                    NotificationManager.shared.postApprovalNotification(for: approval)
+                }
+            case .needsInput:
+                NotificationManager.shared.postNeedsInputNotification(for: session)
+            case .finished:
+                NotificationManager.shared.postFinishedNotification(for: session)
+            default:
+                break
+            }
+        }
     }
 
     /// Answers a request and lets the character react to it.
     private func resolve(_ id: UUID, _ decision: ApprovalDecision) {
         store.resolve(id, with: decision)
+        NotificationManager.shared.removeApprovalNotification(for: id)
         switch decision {
         case .allow: notch?.viewModel.face.react(.approve)
         case .deny: notch?.viewModel.face.react(.deny)
         case .passthrough: break
         }
+        HapticFeedback.play(decision == .allow ? .allow : .deny)
     }
 
     private func answerInTerminal(_ approval: PendingApproval) {
         let session = store.sessions[approval.sessionID]
         store.resolve(approval.id, with: .passthrough)
+        NotificationManager.shared.removeApprovalNotification(for: approval.id)
         notch?.collapse()
         if let session { TerminalJumper.focus(session) }
     }
@@ -219,9 +258,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case .togglePanel:
             notch?.toggle()
         case .allow, .deny:
-            guard let approval = store.approvals.first else { return }
-            if case .question = approval.kind {
-                answerInTerminal(approval)
+            guard let approval = notch?.viewModel.currentApproval(in: store) ?? store.approvals.first else { return }
+            if case .question(let questions) = approval.kind {
+                if shortcut == .allow, let firstOption = questions.first?.options.first {
+                    resolve(approval.id, .deny("User selected: \(firstOption)"))
+                } else {
+                    answerInTerminal(approval)
+                }
             } else if shortcut == .allow {
                 resolve(approval.id, .allow)
             } else if case .plan = approval.kind {
@@ -230,7 +273,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 resolve(approval.id, .deny)
             }
         case .jump:
-            guard let session = store.approvals.first.flatMap({ store.sessions[$0.sessionID] }) ?? store.orderedSessions.first else { return }
+            let selectedApproval = notch?.viewModel.currentApproval(in: store) ?? store.approvals.first
+            guard let session = selectedApproval.flatMap({ store.sessions[$0.sessionID] }) ?? store.orderedSessions.first else { return }
             notch?.collapse()
             TerminalJumper.focus(session)
         case .mute:
@@ -259,16 +303,66 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
         integrations.refresh()
         menu.removeAllItems()
+
+        let toggleItem = NSMenuItem(title: "Toggle Notch", action: #selector(menuToggleNotch), keyEquivalent: " ")
+        toggleItem.keyEquivalentModifierMask = [.control, .option]
+        toggleItem.target = self
+        menu.addItem(toggleItem)
+
+        menu.addItem(.separator())
+
         let names = integrations.integrations.filter { integrations.connected.contains($0.agent) }.map(\.agent.displayName)
         let summary = names.isEmpty ? "No agents connected" : "Connected: " + names.joined(separator: ", ")
-        menu.addItem(withTitle: summary, action: nil, keyEquivalent: "").isEnabled = false
+        let headerItem = NSMenuItem(title: summary, action: nil, keyEquivalent: "")
+        headerItem.isEnabled = false
+        menu.addItem(headerItem)
+
+        let sessions = store.orderedSessions
+        if !sessions.isEmpty {
+            let sessionsMenu = NSMenu()
+            for session in sessions {
+                let stateDesc = session.state == .working ? "Working" : (session.state == .needsInput ? "Needs Input" : session.state.rawValue.capitalized)
+                let title = "\(session.projectName) · \(session.agentName) (\(stateDesc))"
+                let item = NSMenuItem(title: title, action: #selector(menuJumpToSession(_:)), keyEquivalent: "")
+                item.target = self
+                item.representedObject = session.id
+                sessionsMenu.addItem(item)
+            }
+            let sessionsItem = NSMenuItem(title: "Active Sessions (\(sessions.count))", action: nil, keyEquivalent: "")
+            sessionsItem.submenu = sessionsMenu
+            menu.addItem(sessionsItem)
+        }
+
+        let inactiveStates: Set<SessionState> = [.idle, .finished, .error]
+        let hasInactive = store.sessions.values.contains { inactiveStates.contains($0.state) }
+        if hasInactive {
+            let clearItem = NSMenuItem(title: "Clear Inactive Sessions", action: #selector(menuClearInactive), keyEquivalent: "")
+            clearItem.target = self
+            menu.addItem(clearItem)
+        }
+
         menu.addItem(.separator())
+
+        let soundsEnabled = UserDefaults.standard.bool(forKey: PipDefaults.soundsEnabled)
+        let muteItem = NSMenuItem(title: soundsEnabled ? "Mute Sounds" : "Unmute Sounds", action: #selector(menuToggleMute), keyEquivalent: "m")
+        muteItem.keyEquivalentModifierMask = [.control, .option]
+        muteItem.target = self
+        menu.addItem(muteItem)
+
         menu.addItem(withTitle: "Settings…", action: #selector(menuSettings), keyEquivalent: ",").target = self
         menu.addItem(withTitle: "Preview All States", action: #selector(menuDemo), keyEquivalent: "").target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit Pip", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
     }
 
+    @objc private func menuToggleNotch() { notch?.toggle() }
+    @objc private func menuToggleMute() { Self.toggleMute() }
+    @objc private func menuClearInactive() { store.clearInactiveSessions() }
+    @objc private func menuJumpToSession(_ sender: NSMenuItem) {
+        if let sessionID = sender.representedObject as? String, let session = store.sessions[sessionID] {
+            TerminalJumper.focus(session)
+        }
+    }
     @objc private func menuSettings() { openSettings() }
     @objc private func menuDemo() { DemoScript.run(on: store) }
 }

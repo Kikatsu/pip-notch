@@ -89,8 +89,15 @@ struct LimitRing: View {
     }
 
     private var resetText: String {
-        guard let resets = limit.resetsAt else { return "used" }
-        let seconds = max(0, Int(resets.timeIntervalSince(now)))
+        LimitStrip.resetText(resetsAt: limit.resetsAt, now: now)
+    }
+}
+
+extension LimitStrip {
+    static func resetText(resetsAt: Date?, now: Date) -> String {
+        guard let resets = resetsAt else { return "used" }
+        let seconds = Int(resets.timeIntervalSince(now))
+        if seconds <= 0 { return "resets now" }
         let days = seconds / 86_400, hours = seconds / 3600 % 24, minutes = seconds / 60 % 60
         if days > 0 { return "resets in \(days)d \(hours)h" }
         if hours > 0 { return "resets in \(hours)h \(minutes)m" }

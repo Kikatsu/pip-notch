@@ -39,6 +39,13 @@ final class NotchWindowController {
         center.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.placeOnScreen() }
         }
+        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.screensDidWakeNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.placeOnScreen()
+                self.viewModel.updateExpansion(store: self.store)
+            }
+        }
         center.addObserver(forName: NSMenu.didBeginTrackingNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self, self.viewModel.isExpanded else { return }
@@ -67,13 +74,17 @@ final class NotchWindowController {
         panel.orderFrontRegardless()
 
         pointerTimer = Timer(timeInterval: 0.05, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated { self?.trackPointer() }
+            MainActor.assumeIsolated {
+                guard let self, !PowerManager.shared.isScreenSleeping else { return }
+                self.trackPointer()
+            }
         }
         tickTimer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
-                guard let self else { return }
+                guard let self, !PowerManager.shared.isScreenSleeping else { return }
                 self.store.tick()
                 self.viewModel.updateExpansion(store: self.store)
+                PowerManager.shared.isIdle = (self.store.mood == .idle || self.store.mood == .asleep)
             }
         }
         for timer in [pointerTimer, tickTimer].compactMap({ $0 }) {
@@ -100,6 +111,7 @@ final class NotchWindowController {
         case .error, .rateLimited:
             break
         }
+        PowerManager.shared.isIdle = (store.mood == .idle || store.mood == .asleep)
         viewModel.updateExpansion(store: store)
     }
 
@@ -131,6 +143,7 @@ final class NotchWindowController {
     /// The pointer is polled rather than tracked with events because the panel ignores
     /// mouse events whenever the pointer is outside the black shape, so clicks pass through.
     private func trackPointer() {
+        guard !PowerManager.shared.isScreenSleeping else { return }
         let now = Date()
         let pointer = NSEvent.mouseLocation
         let inside = interactiveRect().contains(pointer)
@@ -186,6 +199,8 @@ final class NotchWindowController {
                           height: current.height + (target.height - current.height) * 0.3)
         if abs(next.width - current.width) > 0.01 || abs(next.height - current.height) > 0.01 {
             viewModel.face.gaze = next
+        } else if target == .zero && (current.width != 0 || current.height != 0) {
+            viewModel.face.gaze = .zero
         }
     }
 

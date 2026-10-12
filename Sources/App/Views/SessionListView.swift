@@ -21,13 +21,35 @@ struct SessionListView: View {
         } else {
             VStack(spacing: 2) {
                 ForEach(sessions.prefix(6)) { session in
-                    SessionRow(session: session, now: store.now) { actions.jump(session) }
+                    SessionRow(
+                        session: session,
+                        now: store.now,
+                        onTap: { actions.jump(session) },
+                        onTerminate: { store.terminateSession(session.id) }
+                    )
                 }
                 if sessions.count > 6 {
                     Text("+\(sessions.count - 6) more")
                         .font(.system(size: 11))
                         .foregroundStyle(Palette.quiet)
                         .padding(.top, 2)
+                }
+
+                let inactiveStates: Set<SessionState> = [.idle, .finished, .error]
+                let hasInactive = sessions.contains { inactiveStates.contains($0.state) }
+                if hasInactive {
+                    Button(action: { store.clearInactiveSessions() }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "trash")
+                                .font(.system(size: 10))
+                            Text("Clear inactive sessions")
+                                .font(.system(size: 11))
+                        }
+                        .foregroundStyle(Palette.quiet)
+                        .padding(.top, 4)
+                        .padding(.bottom, 2)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }
@@ -38,54 +60,69 @@ struct SessionRow: View {
     let session: AgentSession
     let now: Date
     let onTap: () -> Void
+    var onTerminate: (() -> Void)? = nil
     @State private var hovering = false
+    @State private var hoveringStop = false
 
     var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 10) {
-                Circle()
-                    .fill(Palette.color(for: session.state))
-                    .frame(width: 7, height: 7)
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 6) {
-                        Text(session.projectName)
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(.white)
-                            .lineLimit(1)
-                        AgentBadge(agent: session.agent)
-                        if let branch = session.branch {
-                            Label(branch, systemImage: "arrow.triangle.branch")
-                                .font(.system(size: 10.5, design: .monospaced))
+        HStack(spacing: 0) {
+            Button(action: onTap) {
+                HStack(spacing: 10) {
+                    Circle()
+                        .fill(Palette.color(for: session.state))
+                        .frame(width: 7, height: 7)
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Text(session.projectName)
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(.white)
+                                .lineLimit(1)
+                            AgentBadge(agent: session.agent)
+                            if let branch = session.branch {
+                                Label(branch, systemImage: "arrow.triangle.branch")
+                                    .font(.system(size: 10.5, design: .monospaced))
+                                    .foregroundStyle(Palette.quiet)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                                    .frame(maxWidth: 120, alignment: .leading)
+                                    .fixedSize(horizontal: true, vertical: false)
+                            }
+                            Text(subtitle)
+                                .font(.system(size: 11))
                                 .foregroundStyle(Palette.quiet)
                                 .lineLimit(1)
-                                .truncationMode(.middle)
-                                .frame(maxWidth: 120, alignment: .leading)
-                                .fixedSize(horizontal: true, vertical: false)
                         }
-                        Text(subtitle)
-                            .font(.system(size: 11))
+                        Text(statusLine)
+                            .font(.system(size: 11.5))
                             .foregroundStyle(Palette.quiet)
                             .lineLimit(1)
+                            .truncationMode(.tail)
                     }
-                    Text(statusLine)
-                        .font(.system(size: 11.5))
-                        .foregroundStyle(Palette.quiet)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
+                    Spacer(minLength: 8)
                 }
-                Spacer(minLength: 8)
-                if let elapsed {
-                    Text(elapsed)
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundStyle(Palette.quiet)
-                }
+                .contentShape(Rectangle())
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
-            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(hovering ? Palette.faint : .clear))
-            .contentShape(Rectangle())
+            .buttonStyle(.plain)
+
+            if hovering, session.state == .working, session.pid != nil, let onTerminate {
+                Button(action: onTerminate) {
+                    Image(systemName: "stop.circle.fill")
+                        .font(.system(size: 14))
+                        .foregroundStyle(hoveringStop ? Palette.red : Palette.quiet)
+                        .padding(.leading, 4)
+                }
+                .buttonStyle(.plain)
+                .onHover { hoveringStop = $0 }
+                .help("Stop process (SIGTERM)")
+            } else if let elapsed {
+                Text(elapsed)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(Palette.quiet)
+            }
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(hovering ? Palette.faint : .clear))
         .onHover { hovering = $0 }
         .help("Go to this session")
     }

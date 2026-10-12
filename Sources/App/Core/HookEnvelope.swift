@@ -13,11 +13,11 @@ struct HookEnvelope {
     var eventName: String { payload["hook_event_name"] as? String ?? "" }
     var sessionID: String { payload["session_id"] as? String ?? "\(agent.rawValue)-main" }
     var cwd: String { payload["cwd"] as? String ?? "" }
-    var isBlocking: Bool { BridgeWire.blockingEvents.contains(eventName) }
+    let isBlocking: Bool
 
     subscript(key: String) -> String? { payload[key] as? String }
 
-    init(agent: AgentKind, pid: pid_t?, env: [String: String] = [:], payload: [String: Any], fallbackCwd: String? = nil) {
+    init(agent: AgentKind, pid: pid_t?, env: [String: String] = [:], payload: [String: Any], fallbackCwd: String? = nil, isBlocking: Bool? = nil) {
         self.agent = agent
         self.pid = pid
         self.env = env
@@ -30,6 +30,7 @@ struct HookEnvelope {
             normalized["session_id"] = "\(agent.rawValue)-\(pid.map(String.init) ?? "main")"
         }
         self.payload = normalized
+        self.isBlocking = isBlocking ?? BridgeWire.blockingEvents.contains(normalized["hook_event_name"] as? String ?? "")
     }
 
     init?(data: Data) {
@@ -43,7 +44,8 @@ struct HookEnvelope {
             pid: pid.flatMap { $0 > 1 ? $0 : nil },
             env: object["env"] as? [String: String] ?? [:],
             payload: payload,
-            fallbackCwd: object["cwd"] as? String
+            fallbackCwd: object["cwd"] as? String,
+            isBlocking: object["blocking"] as? Bool
         )
         rawAgent = raw
     }

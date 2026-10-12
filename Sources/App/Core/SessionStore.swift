@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import Darwin
 
 /// Turns hook events into session state and decides the notch's mood.
 @MainActor
@@ -19,22 +20,29 @@ final class SessionStore: ObservableObject {
 
     /// Called when a new approval arrives or a turn finishes, so the notch can open itself.
     var onAttention: ((Attention, AgentSession) -> Void)?
+    /// Called when an approval is resolved, abandoned, or cancelled so external observers (e.g. notifications) can clean up.
+    var onApprovalRemoved: ((UUID) -> Void)?
 
     enum Attention { case approval, needsInput, finished, error, rateLimited }
+
+    static let inactiveStates: Set<SessionState> = [.idle, .finished, .error, .rateLimited]
 
     private var responders: [UUID: (ApprovalDecision) -> Void] = [:]
     private let isProcessAlive: (pid_t) -> Bool
     private let hostName: (HookEnvelope) -> String?
     private let gitBranch: (String) -> String?
+    private let killProcess: (pid_t, Int32) -> Int32
 
     init(
         isProcessAlive: @escaping (pid_t) -> Bool = ProcessTree.isAlive,
         hostName: @escaping (HookEnvelope) -> String? = { _ in nil },
-        gitBranch: @escaping (String) -> String? = { _ in nil }
+        gitBranch: @escaping (String) -> String? = { _ in nil },
+        killProcess: @escaping (pid_t, Int32) -> Int32 = Darwin.kill
     ) {
         self.isProcessAlive = isProcessAlive
         self.hostName = hostName
         self.gitBranch = gitBranch
+        self.killProcess = killProcess
     }
 
     // MARK: Derived state
@@ -66,6 +74,10 @@ final class SessionStore: ObservableObject {
     }
 
     var workingCount: Int { sessions.values.filter { $0.state == .working }.count }
+
+    var hasInactiveSessions: Bool {
+        sessions.values.contains { Self.inactiveStates.contains($0.state) }
+    }
 
     // MARK: Events
 
@@ -176,12 +188,14 @@ final class SessionStore: ObservableObject {
         Log.events.info("Approval \(decision.name, privacy: .public)")
         responders.removeValue(forKey: id)?(decision)
         approvals.removeAll { $0.id == id }
+        onApprovalRemoved?(id)
     }
 
     /// The agent stopped waiting (Esc, crash, timeout): drop the card without answering.
     func approvalAbandoned(_ id: UUID) {
         responders.removeValue(forKey: id)
         approvals.removeAll { $0.id == id }
+        onApprovalRemoved?(id)
     }
 
     /// Advances time-based state: finished and error moods fade, dead sessions go away.
@@ -190,12 +204,40 @@ final class SessionStore: ObservableObject {
         for (id, session) in sessions {
             let quiet = time.timeIntervalSince(session.updatedAt)
             if let pid = session.pid, !isProcessAlive(pid) {
+                // Keep showing a finished turn until finishedDisplay elapses, even if the process exited promptly.
+                if session.state == .finished, time.timeIntervalSince(session.stateChangedAt) < Self.finishedDisplay {
+                    continue
+                }
                 endSession(id)
             } else if session.agent.isIDE, quiet > Self.ideQuietAfter {
                 endSession(id)
             } else if session.pid == nil, quiet > Self.staleAfter {
                 endSession(id)
             }
+        }
+    }
+
+    /// Terminates the agent's process using SIGTERM and marks the session as finished.
+    func terminateSession(_ id: String) {
+        guard var session = sessions[id] else { return }
+        if let pid = session.pid {
+            _ = killProcess(pid, SIGTERM)
+        }
+        cancelApprovals(forSession: id)
+        session.state = .finished
+        session.currentTool = nil
+        session.stateChangedAt = now
+        session.updatedAt = now
+        sessions[id] = session
+    }
+
+    /// Removes all sessions currently in inactive states (.idle, .finished, .error, .rateLimited).
+    func clearInactiveSessions() {
+        let inactiveIDs = sessions.values
+            .filter { Self.inactiveStates.contains($0.state) }
+            .map(\.id)
+        for id in inactiveIDs {
+            endSession(id)
         }
     }
 
@@ -210,28 +252,34 @@ final class SessionStore: ObservableObject {
             toolName: tool, title: summary.title, detail: summary.detail, receivedAt: time
         )
         approval.agentName = session.agentName
-        switch tool {
-        case "ExitPlanMode":
+        if isPlanTool(tool: tool, input: input) {
+            let markdown = (input["plan"] as? String) ?? (input["plan_markdown"] as? String) ?? (input["markdown"] as? String) ?? ""
             approval = PendingApproval(
                 id: approval.id, sessionID: session.id, agent: session.agent, projectName: session.projectName,
                 toolName: tool, title: "Plan ready for review", detail: "", receivedAt: time,
-                kind: .plan(markdown: input["plan"] as? String ?? "")
+                kind: .plan(markdown: markdown)
             )
-        case "AskUserQuestion":
-            let questions = (input["questions"] as? [[String: Any]] ?? []).map { item in
-                PendingApproval.Question(
-                    text: item["question"] as? String ?? "",
-                    options: (item["options"] as? [[String: Any]] ?? []).compactMap { $0["label"] as? String }
-                )
-            }
+            approval.agentName = session.agentName
+        } else if let questions = extractQuestions(tool: tool, input: input) {
+            let primaryQuestion = questions.first?.text
+            let title = (primaryQuestion != nil && !primaryQuestion!.isEmpty) ? primaryQuestion! : "Has a question for you"
             approval = PendingApproval(
                 id: approval.id, sessionID: session.id, agent: session.agent, projectName: session.projectName,
-                toolName: tool, title: "Has a question for you", detail: "", receivedAt: time,
+                toolName: tool, title: title, detail: "", receivedAt: time,
                 kind: .question(questions)
             )
-        default:
-            break
+            approval.agentName = session.agentName
         }
+        if isShellTool(tool: tool) {
+            let command = (input["command"] as? String)
+                ?? (input["cmd"] as? String)
+                ?? (input["CommandLine"] as? String)
+                ?? (input["script"] as? String)
+                ?? event["command"]
+                ?? summary.detail
+            approval.risk = CommandSafety.analyze(command: command)
+        }
+        approval.diff = ToolSummary.extractDiff(tool: tool, input: input)
         responders[approval.id] = reply
         approvals.append(approval)
         onAttention?(.approval, session)
@@ -247,6 +295,91 @@ final class SessionStore: ObservableObject {
     private func endSession(_ id: String) {
         cancelApprovals(forSession: id)
         sessions.removeValue(forKey: id)
+    }
+
+    private func isShellTool(tool: String) -> Bool {
+        let lower = tool.lowercased()
+        let shellTools = ["bash", "shell", "run_shell_command", "run_command", "execute", "exec", "terminal", "powershell", "sh", "zsh"]
+        return tool == "Bash" || shellTools.contains(lower)
+    }
+
+    private func isPlanTool(tool: String, input: [String: Any]) -> Bool {
+        if tool == "ExitPlanMode" { return true }
+        if ["ReviewPlan", "SubmitPlan", "plan_mode"].contains(tool) { return true }
+        if input["plan"] is String || input["plan_markdown"] is String { return true }
+        return false
+    }
+
+    private func extractQuestions(tool: String, input: [String: Any]) -> [PendingApproval.Question]? {
+        let lower = tool.lowercased()
+        let isQuestionTool = lower.contains("question") || lower.contains("ask") || lower.contains("input") || tool == "request_user_input"
+
+        // Format 1: input["questions"] is an array
+        if let rawQuestions = input["questions"] as? [[String: Any]], !rawQuestions.isEmpty {
+            let parsed = rawQuestions.map { item -> PendingApproval.Question in
+                let text = item["question"] as? String ?? item["title"] as? String ?? item["text"] as? String ?? ""
+                var options: [String] = []
+                var descriptions: [String: String] = [:]
+
+                if let stringOptions = item["options"] as? [String] {
+                    options = stringOptions
+                } else if let dictOptions = item["options"] as? [[String: Any]] {
+                    for opt in dictOptions {
+                        let label = opt["label"] as? String ?? opt["title"] as? String ?? opt["text"] as? String ?? opt["value"] as? String ?? ""
+                        if !label.isEmpty {
+                            options.append(label)
+                            if let desc = opt["description"] as? String ?? opt["detail"] as? String {
+                                descriptions[label] = desc
+                            }
+                        }
+                    }
+                } else if let choices = item["choices"] as? [String] {
+                    options = choices
+                }
+                return PendingApproval.Question(text: text, options: options, descriptions: descriptions)
+            }
+            return parsed
+        }
+
+        // Format 2: direct "question" in input, or "prompt" when it's a question tool or choices are present
+        let questionText: String? = {
+            if let q = input["question"] as? String, !q.isEmpty {
+                return q
+            }
+            if let p = input["prompt"] as? String, !p.isEmpty, (isQuestionTool || input["options"] != nil || input["choices"] != nil) {
+                return p
+            }
+            return nil
+        }()
+        if let questionText {
+            var options: [String] = []
+            var descriptions: [String: String] = [:]
+
+            if let stringOptions = input["options"] as? [String] {
+                options = stringOptions
+            } else if let dictOptions = input["options"] as? [[String: Any]] {
+                for opt in dictOptions {
+                    let label = opt["label"] as? String ?? opt["title"] as? String ?? opt["text"] as? String ?? opt["value"] as? String ?? ""
+                    if !label.isEmpty {
+                        options.append(label)
+                        if let desc = opt["description"] as? String ?? opt["detail"] as? String {
+                            descriptions[label] = desc
+                        }
+                    }
+                }
+            } else if let choices = input["choices"] as? [String] {
+                options = choices
+            }
+            return [PendingApproval.Question(text: questionText, options: options, descriptions: descriptions)]
+        }
+
+        // Format 3: question tool without options
+        if isQuestionTool {
+            let text = input["message"] as? String ?? input["detail"] as? String ?? "Has a question for you"
+            return [PendingApproval.Question(text: text, options: [])]
+        }
+
+        return nil
     }
 
     private static func firstLine(_ text: String) -> String {

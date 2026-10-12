@@ -337,6 +337,8 @@ enum PipDefaults {
     static let soundsEnabled = "soundsEnabled"
     static let soundVolume = "soundVolume"
     static let soundPack = "soundPack"
+    static let hapticsEnabled = "hapticsEnabled"
+    static let notificationsEnabled = "notificationsEnabled"
 
     static func soundKey(_ cue: SoundCue) -> String { "sound.\(cue.rawValue)" }
 
@@ -346,6 +348,8 @@ enum PipDefaults {
             soundsEnabled: true,
             soundVolume: 0.6,
             soundPack: SoundPack.pip.rawValue,
+            hapticsEnabled: true,
+            notificationsEnabled: true,
         ]
         for cue in SoundCue.allCases { values[soundKey(cue)] = true }
         UserDefaults.standard.register(defaults: values)
