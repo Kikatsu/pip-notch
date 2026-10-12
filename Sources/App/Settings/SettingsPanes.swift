@@ -206,10 +206,17 @@ private struct AgentRow: View {
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                     if model.awaitingTrust.contains(integration.agent) {
-                        Label("Not trusted yet: run /hooks in \(integration.agent.displayName) and trust Pip's hooks, then restart it.", systemImage: "exclamationmark.triangle.fill")
+                        Label("\(integration.agent.displayName) skips Pip's hooks until you trust them.", systemImage: "exclamationmark.triangle.fill")
                             .font(.caption)
                             .foregroundStyle(.orange)
                             .fixedSize(horizontal: false, vertical: true)
+                        HStack(spacing: 6) {
+                            Button("Trust in \(integration.agent.displayName)") { model.trustCodexHooks() }
+                                .controlSize(.small)
+                                .disabled(model.trusting)
+                                .help("Approves only the hooks that run Pip's bridge, like trusting them in /hooks.")
+                            if model.trusting { ProgressView().controlSize(.small) }
+                        }
                     }
                 }
             }

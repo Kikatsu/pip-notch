@@ -327,7 +327,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(headerItem)
 
         for integration in integrations.integrations where integrations.awaitingTrust.contains(integration.agent) {
-            let trustItem = NSMenuItem(title: "⚠︎ Run /hooks in \(integration.agent.displayName) to trust Pip", action: #selector(menuSettings), keyEquivalent: "")
+            let trustItem = NSMenuItem(title: "⚠︎ Trust Pip in \(integration.agent.displayName)…", action: #selector(menuSettings), keyEquivalent: "")
             trustItem.target = self
             menu.addItem(trustItem)
         }

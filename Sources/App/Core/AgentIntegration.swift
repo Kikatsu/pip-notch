@@ -618,19 +618,6 @@ enum BridgeInstaller {
     }
 }
 
-/// Codex records each hook the user approved in `/hooks` as a `trusted_hash` under `[hooks.state]`
-/// in `~/.codex/config.toml`. Without one, Codex silently skips every hook in `hooks.json`.
-enum CodexHookTrust {
-    static func hasTrustedHooks(configTOML: String?) -> Bool {
-        guard let configTOML else { return false }
-        return configTOML.split(separator: "\n").contains { line in
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            // Either `trusted_hash = "…"` under a table header or an inline `{ trusted_hash = "…" }`.
-            return !trimmed.hasPrefix("#") && trimmed.contains("trusted_hash")
-        }
-    }
-}
-
 /// Pip's marked section inside a TOML file the user also edits.
 enum TomlBlock {
     static let start = "# >>> Pip (managed by Pip; remove it in Pip Settings)"

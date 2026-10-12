@@ -21,6 +21,7 @@ First public beta.
 - Global keyboard shortcuts and precise jumping to terminal sessions and editor windows.
 - Native Settings window.
 - A warning in Settings, the menu bar and a notification when Codex hasn't trusted Pip's hooks yet, which used to leave the notch silently empty.
+- A **Trust in Codex** button in Settings → Agents that trusts Pip's own hooks through Codex's app server, without opening `/hooks`.
 
 [Unreleased]: https://github.com/Kikatsu/pip-notch/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/Kikatsu/pip-notch/releases/tag/v0.1.0

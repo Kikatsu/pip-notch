@@ -13,6 +13,8 @@ final class IntegrationsModel: ObservableObject {
     @Published private(set) var connected: Set<AgentKind> = []
     /// Connected agents that are ignoring Pip's hooks until the user trusts them in the agent.
     @Published private(set) var awaitingTrust: Set<AgentKind> = []
+    /// A "Trust in Codex" request is running.
+    @Published private(set) var trusting = false
     /// Agents Pip connected or repaired on its own since launch, shown in Settings.
     @Published private(set) var autoConnected: Set<AgentKind> = []
     @Published var lastError: String?
@@ -74,6 +76,26 @@ final class IntegrationsModel: ObservableObject {
     func refresh() {
         connected = Set(integrations.filter { $0.isInstalled() }.map(\.agent))
         awaitingTrust = Set(integrations.filter { $0.awaitsTrust() }.map(\.agent))
+    }
+
+    /// The Settings button: asks Codex to trust Pip's hooks, as `/hooks` would. Never runs on its own.
+    func trustCodexHooks() {
+        guard let bridgePath, !trusting else { return }
+        trusting = true
+        lastError = nil
+        Task.detached {
+            let result = Result { try CodexHookTrust.trustPipHooks(bridgePath: bridgePath) }
+            await MainActor.run {
+                self.trusting = false
+                switch result {
+                case .success(let count):
+                    Log.ui.notice("Trusted \(count) Pip hooks in Codex")
+                case .failure(let error):
+                    self.lastError = error.localizedDescription
+                }
+                self.refresh()
+            }
+        }
     }
 
     /// A manual Connect or Disconnect. Disconnecting opts the agent out of auto-connect.

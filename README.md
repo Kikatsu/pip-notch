@@ -122,7 +122,7 @@ open /Applications/Pip.app
 
 1. **Open Pip.** It finds the agents installed on your Mac and connects them automatically (see [Connecting agents](#connecting-agents)).
 2. **Restart your agents.** Sessions that were already running before Pip connected won't have its hooks yet.
-3. **Codex only:** run `/hooks` inside Codex once and trust Pip's hooks.
+3. **Codex only:** click **Trust in Codex** in Settings → Agents (or run `/hooks` in Codex and trust Pip's hooks).
 4. **Try it without an agent:** choose **Preview All States** from the menu bar eyes. This plays fake sessions from every agent through every state.
 5. **Allow notifications** if macOS asks. The first time you jump into iTerm2 or Terminal, macOS also asks for Automation permission so Pip can bring the right tab forward.
 6. **Optional:** open **Settings…** (from the menu bar eyes or the ⚙ in the notch) and turn on **Open at login** under General.
@@ -146,7 +146,7 @@ When connecting, Pip copies its `pip-bridge` helper to `~/Library/Application Su
 | Agent | Status | Config file | What Pip shows |
 | --- | --- | --- | --- |
 | Claude Code | Tested | `~/.claude/settings.json` | Status, tools, approvals from the notch |
-| Codex | Tested | `~/.codex/hooks.json` | Status, tools, approvals from the notch. Run `/hooks` in Codex once to trust Pip's hooks. |
+| Codex | Tested | `~/.codex/hooks.json` | Status, tools, approvals from the notch. Click **Trust in Codex** in Settings once. |
 | ZCode | Experimental | `~/.zcode/settings.json` | Status, tools, approvals from the notch |
 | Gemini CLI | Experimental | `~/.gemini/settings.json` | Status, tools, replies; "needs you" when a tool prompt is waiting |
 | Antigravity CLI | Tested | `~/.gemini/config/hooks.json` | Status and tools for the app and `agy` CLI |
@@ -265,9 +265,10 @@ If it still doesn't work and the agent is marked *Experimental*, please [report 
 
 Codex only runs hooks you've reviewed, and it skips untrusted ones without any error. Pip warns about this in Settings → Agents, in the menu bar menu and with a notification.
 
-1. Start `codex` and type `/hooks`.
-2. Trust Pip's hooks (they all run `…/Pip/bin/pip-bridge codex`).
-3. Quit Codex and start a new session.
+- **One click:** Settings → Agents → **Trust in Codex**. Pip asks Codex to trust only the hooks that run Pip's bridge, the same request `/hooks` makes. Your other hooks are left as they are.
+- **Or by hand:** start `codex`, type `/hooks` and trust the entries that run `…/Pip/bin/pip-bridge codex`.
+
+Then start a new Codex session.
 
 After a Codex update, check `/hooks` again: if your `~/.codex/config.toml` was reset, the trust goes with it.
 </details>

